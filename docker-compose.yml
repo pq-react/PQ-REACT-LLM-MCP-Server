@@ -1,0 +1,99 @@
+# PQ-REACT MCP server stack — standalone deployment.
+#
+# Brings up:
+#   - pqreact-mcp-mariadb : MariaDB 10.6 with PQREACT.performance_test
+#   - pqreact-mcp-server  : FastMCP SSE on :5040
+#
+# Quickstart (single host):
+#   cp .env.example .env
+#   # edit .env: set MCP_DB_ROOT_PW + MCP_DB_PW
+#   docker compose up -d
+#   # then load the schema + seed data:
+#   docker exec -i pqreact-mcp-mariadb \
+#       sh -c 'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" PQREACT' \
+#       < mcp-ollama_server/database/pqreact_export.sql
+#
+# Cross-stack reach (optional): set QUJATA_DB_HOST / QUJATA_API_BASE /
+# KATANA_NBI_BASE / KATANA_KPI_BASE in .env to enable the corresponding
+# MCP tools. They soft-fail with "unreachable" if not set.
+
+services:
+  mcp-mariadb:
+    image: mariadb:10.6
+    container_name: pqreact-mcp-mariadb
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MCP_DB_ROOT_PW:?MCP_DB_ROOT_PW required}
+      MARIADB_DATABASE: ${MCP_DB_NAME:-PQREACT}
+      MARIADB_USER: ${MCP_DB_USER:-pqreact}
+      MARIADB_PASSWORD: ${MCP_DB_PW:?MCP_DB_PW required}
+    volumes:
+      - mcp-mariadb-data:/var/lib/mysql
+      - ./mcp-ollama_server/database/pqreact_export.sql:/docker-entrypoint-initdb.d/00-schema.sql:ro
+    ports:
+      - "${MCP_DB_PORT:-3307}:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks: [mcp]
+
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    container_name: pqreact-mcp-server
+    environment:
+      DB_HOST: mcp-mariadb
+      DB_PORT: 3306
+      DB_NAME: ${MCP_DB_NAME:-PQREACT}
+      DB_USER: ${MCP_DB_USER:-pqreact}
+      DB_PASSWORD: ${MCP_DB_PW:?MCP_DB_PW required}
+      MCP_BIND_HOST: 0.0.0.0
+      MCP_BIND_PORT: "5040"
+      # Cross-stack tools — soft-fail if endpoints unreachable
+      QUJATA_DB_HOST:     ${QUJATA_DB_HOST:-}
+      QUJATA_DB_PORT:     ${QUJATA_DB_PORT:-3306}
+      QUJATA_DB_NAME:     ${QUJATA_DB_NAME:-qujata}
+      QUJATA_DB_USER:     ${QUJATA_DB_USER:-root}
+      QUJATA_DB_PASSWORD: ${QUJATA_DB_PASSWORD:-}
+      QUJATA_API_BASE:    ${QUJATA_API_BASE:-}
+      KATANA_NBI_BASE:    ${KATANA_NBI_BASE:-}
+      KATANA_KPI_BASE:    ${KATANA_KPI_BASE:-}
+      KATANA_ALLOW_CREATE: ${KATANA_ALLOW_CREATE:-false}
+      KATANA_ALLOW_DELETE: ${KATANA_ALLOW_DELETE:-false}
+    ports:
+      - "${MCP_SSE_PORT:-5040}:5040"
+    depends_on:
+      mcp-mariadb:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [mcp]
+
+  # Phase 3 — CBOM ingestion service. Runs on its own VM (<cbomkit-host>)
+  # in production; reaches the MariaDB on <mcp-server-host>:3307 over the
+  # testbed VPN. The `inventory` profile keeps it out of the default `up`
+  # so the existing two-container deploy on <mcp-server-host> stays small.
+  asset-inventory:
+    profiles: [inventory]
+    build:
+      context: ./asset_inventory
+      dockerfile: Dockerfile
+    container_name: pqreact-asset-inventory
+    environment:
+      DB_HOST:     ${ASSET_DB_HOST:?ASSET_DB_HOST required (MariaDB host)}
+      DB_PORT:     ${ASSET_DB_PORT:-3306}
+      DB_NAME:     ${ASSET_DB_NAME:-PQREACT}
+      DB_USER:     ${ASSET_DB_USER:-pqreact}
+      DB_PASSWORD: ${ASSET_DB_PW:?ASSET_DB_PW required}
+    ports:
+      - "${ASSET_LISTEN_PORT:-8082}:8082"
+    restart: unless-stopped
+
+volumes:
+  mcp-mariadb-data:
+
+networks:
+  mcp:
+    driver: bridge

@@ -1,0 +1,45 @@
+[Unit]
+Description=PQ-REACT MCP Client API + Chat UI (FastAPI on Ollama VM)
+After=network-online.target ollama.service
+Wants=network-online.target ollama.service
+
+[Service]
+# User / Group are template placeholders — the install script substitutes
+# them with $SSHUSER (or whichever local user owns /opt/pqreact-mcp-client)
+# before copying this unit into /etc/systemd/system/.
+Type=simple
+User=__USER__
+Group=__USER__
+WorkingDirectory=/opt/pqreact-mcp-client
+# MCP_SERVER_URL must be set per deployment — it's the SSE endpoint of
+# the FastMCP server, almost always on a different host from the chat
+# client. Either:
+#   - drop /opt/pqreact-mcp-client/.env with `MCP_SERVER_URL=http://...`
+#   - or use `systemctl edit pqreact-mcp-client.service` to add a
+#     drop-in override.
+# We deliberately do NOT default this to http://localhost:5040/sse —
+# that's almost never the right answer (the MCP server doesn't run on
+# the chat client's host) and a localhost default silently misroutes
+# until someone digs through the logs.
+# OLLAMA_HOST + OLLAMA_MODEL similarly need per-deployment configuration
+# in most setups (a Mac mini Ollama may be at a different host); kept
+# as documented placeholders here.
+EnvironmentFile=-/opt/pqreact-mcp-client/.env
+Environment=OLLAMA_HOST=http://localhost:11434
+Environment=OLLAMA_MODEL=glm-4.7-flash:q4_K_M
+# Environment=MCP_SERVER_URL=  ← set via /opt/pqreact-mcp-client/.env
+Environment=MCP_API_PORT=8081
+Environment=PYTHONUNBUFFERED=1
+# Auto-connect retry policy — the api.py lifespan loop retries with
+# exponential backoff up to MCP_AUTOCONNECT_ATTEMPTS (default 8 if
+# unset). /chat handlers also lazily reconnect on the first call if
+# the connection has dropped.
+# Environment=MCP_AUTOCONNECT_ATTEMPTS=8
+ExecStart=/opt/pqreact-mcp-client/.venv/bin/uvicorn api:app --host 0.0.0.0 --port 8081
+Restart=on-failure
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

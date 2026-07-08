@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="auto">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PQ-REACT · PQC chat</title>
+
+  <!-- favicon -->
+  <link rel="icon"            type="image/png" href="/img/pqreact-favicon.png">
+  <link rel="apple-touch-icon"                href="/img/pqreact-favicon.png">
+
+  <!-- Theme bootstrap — runs before the stylesheet so we don't flash the
+       wrong palette during navigation. Reads localStorage; falls back to
+       prefers-color-scheme. -->
+  <script>
+    (function(){
+      try {
+        var saved = localStorage.getItem('pqreact_theme');
+        var prefDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var theme = saved || (prefDark ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', theme);
+      } catch(e) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+
+  <link rel="stylesheet" href="/style.css?v=20260508-themed">
+  <!-- PQ-REACT console skin — shared visual identity (overrides style.css). -->
+  <link rel="stylesheet" href="/pq-console.css?v=20260525-console">
+</head>
+
+<body>
+  <header>
+    <a class="brand-link" href="https://www.pqreact.eu/" target="_blank" rel="noopener"
+       title="PQ-REACT — Post-Quantum Cryptography Real-time Enabling Adoption Compliance Toolkit">
+      <img class="brand-logo" src="/img/pqreact-logo-horizontal.png" alt="PQ-REACT"
+           style="height:36px;width:auto;display:block;">
+    </a>
+    <span class="header-divider"></span>
+    <div id="status-dot"></div>
+    <h1 class="section-title">PQC chat</h1>
+    <span id="agent-mode" class="agent-mode-badge" title="orchestrator routes via the keyword classifier across performance/regulation/qujata specialists">multi-agent</span>
+    <button id="clear-chat" type="button" aria-label="Clear conversation" title="Clear conversation history">Clear</button>
+    <button id="theme-toggle" type="button" aria-label="Toggle light/dark theme" title="Toggle theme">AUTO</button>
+    <button id="toggle-suggestions" type="button" aria-label="Toggle suggestions" title="Toggle suggestions">MENU</button>
+  </header>
+
+  <div id="connect-panel" style="display:none">
+    <input id="server-path" type="text"
+      placeholder="path to mariadb_mcp.py (stdio) or http://host:5040/sse" />
+  </div>
+
+  <div id="main-row">
+
+    <!-- ─── Suggestions sidebar ─────────────────────────────────────── -->
+    <aside id="suggestions" aria-label="Suggested questions">
+      <div class="sidebar-title">Suggested questions</div>
+      <div class="sidebar-hint">
+        Click any question to fill the input. Edit if you want, then press Send.
+        The orchestrator routes each query to one of three specialists
+        (<code>performance</code> · <code>regulation</code> · <code>qujata</code>)
+        based on the keywords it contains. Each category below shows the
+        one or two fastest, most reliable prompts that best demonstrate
+        the engine.
+      </div>
+
+      <!-- ─── 1. Pilot recommendations (sector-specific) ─────────────────── -->
+      <!-- Differentiator: regulation-aware recommendation across the whole stack. -->
+      <details open class="suggestion-category">
+        <summary>Pilot recommendations · sector-specific</summary>
+        <button class="suggestion" type="button">What PQC algorithms should the telco sector deploy to comply with 3GPP TS 33.501 and NIS2?</button>
+        <button class="suggestion" type="button">Recommend a migration priority for the telco sector with the top 10 ranked assets.</button>
+      </details>
+
+      <!-- ─── 2. Compliance & regulatory deadlines ──────────────────────── -->
+      <!-- Differentiator: a regulatory knowledge base no competitor exposes. -->
+      <details class="suggestion-category">
+        <summary>Compliance · regulations · deadlines</summary>
+        <button class="suggestion" type="button">What's the PQC migration timeline for the energy sector?</button>
+        <button class="suggestion" type="button">Show NIS2 obligations applicable to the financial sector with deadlines.</button>
+      </details>
+
+      <!-- ─── 3. CBOM crypto inventory & migration priority ──────────────── -->
+      <!-- Differentiator: cryptographic inventory + quantum-risk classification. -->
+      <details class="suggestion-category">
+        <summary>CBOM inventory · migration priority</summary>
+        <button class="suggestion" type="button">Quantum risk summary for the telco sector — how many assets are vulnerable?</button>
+        <button class="suggestion" type="button">Generate a compliance report for CBOM document #1.</button>
+      </details>
+
+      <!-- ─── 6. Run a real PQ-IPsec experiment (live testbed) ───────────── -->
+      <!-- Differentiator: live 5G + PQ-IPsec grounding. One option — it runs a
+           real ~10 s experiment, so it is intentionally the only slow prompt. -->
+      <details class="suggestion-category">
+        <summary>Run a real PQ-IPsec experiment</summary>
+        <button class="suggestion" type="button">Run a 10-second mlkem768 experiment on the mgmt slice at 50 Mbps with 1200 byte messages.</button>
+      </details>
+
+      <!-- ─── 8. Performance leaderboard ─────────────────────────────────── -->
+      <details class="suggestion-category">
+        <summary>Performance leaderboard</summary>
+        <button class="suggestion" type="button">Show the 5 fastest algorithms across all message sizes.</button>
+        <button class="suggestion" type="button">Compare mlkem768 to mlkem1024 across security levels.</button>
+      </details>
+
+      <!-- ─── 10. CAM (context-agility benchmarks) ───────────────────────── -->
+      <details class="suggestion-category">
+        <summary>CAM · context agility benchmarks</summary>
+        <button class="suggestion" type="button">List every algorithm and its handshake duration from the CAM benchmark dataset.</button>
+        <button class="suggestion" type="button">Which algorithm has the lowest handshake duration in the CAM dataset?</button>
+      </details>
+
+      <div class="sidebar-footer">
+        35 MCP tools across 6 categories
+        (<code>[DB]</code>·<code>[QUJATA]</code>·<code>[KATANA]</code>·<code>[REGULATIONS]</code>·<code>[INVENTORY]</code>·<code>[DEVICES]</code>).
+        See <code>PQREACT_DELIVERY_REPORT.md</code> for the full picture.
+      </div>
+    </aside>
+
+    <!-- ─── Chat pane (existing) ────────────────────────────────────── -->
+    <div id="chat-pane">
+
+      <div id="status-message">
+        <img class="splash-logo" src="/img/pqreact-logo-horizontal.png"
+             alt="PQ-REACT" style="max-width:340px;width:60%;height:auto;opacity:0.92;">
+      </div>
+
+      <div id="app">
+        <div id="chat-area"></div>
+        <div id="input-bar">
+          <textarea id="query-input" rows="1"
+            placeholder="Ask anything about Post-Quantum Cryptography — or click a suggestion on the left"
+            disabled></textarea>
+          <button id="send-btn" onclick="sendMessage()" disabled>Send</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+<script src="script.js?v=20260508-themed"></script>
+
+</body>
+</html>

@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.rej
+*.orig
+.venv/
+venv/
+*.egg-info/
+
+# Secrets / local config — never commit real values (use .env.example)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+id_rsa*
+
+# OS / editor cruft
+.DS_Store
+**/.DS_Store
+*.swp
+*~
+.idea/
+.vscode/
+
+# Generated deliverables / local artifacts (keep source, not build output)
+*.docx
+*.tmp

@@ -1,0 +1,27 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN apt-get update -qq && \
+    apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY requirements-server.txt /app/requirements-server.txt
+RUN pip install --no-cache-dir -r requirements-server.txt
+
+COPY mcp-ollama_server /app/mcp-ollama_server
+COPY serve_sse.py /app/serve_sse.py
+
+RUN useradd --uid 10001 --create-home --shell /bin/false mcp && \
+    chown -R mcp:mcp /app
+USER mcp
+
+ENV MCP_BIND_HOST=0.0.0.0 \
+    MCP_BIND_PORT=5040
+
+EXPOSE 5040
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+    CMD curl -fsS http://127.0.0.1:5040/sse 2>/dev/null | head -c 1 >/dev/null || exit 1
+
+CMD ["python", "/app/serve_sse.py"]

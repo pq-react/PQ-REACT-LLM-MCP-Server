@@ -1,0 +1,22 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements-client.txt /app/requirements-client.txt
+RUN pip install --no-cache-dir -r requirements-client.txt
+
+COPY mcp-ollama_server/client_mcp /app/client_mcp
+
+RUN useradd --uid 10001 --create-home --shell /bin/false mcpcli && \
+    chown -R mcpcli:mcpcli /app
+USER mcpcli
+
+ENV MCP_API_PORT=8081 \
+    OLLAMA_HOST=http://host.docker.internal:11434 \
+    OLLAMA_MODEL=glm-4.7-flash:q4_K_M \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app/client_mcp
+EXPOSE 8081
+
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8081"]

@@ -1,0 +1,98 @@
+/* ============================================================================
+ * PQ-REACT // CONSOLE SKIN — Chat / MCP UI
+ * Apache License 2.0.
+ *
+ * Shared PQ-REACT operator-console identity (see pq-react-theme.css):
+ * IBM Plex Sans + JetBrains Mono, light blueprint canvas, cyan accent,
+ * hairline borders, HUD corner brackets, monospaced uppercase chrome.
+ * Loaded after style.css; re-maps the chat UI's tokens + restyles its
+ * signature elements. No markup/JS changes.
+ * ========================================================================== */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+/* 1 — Token remap → light console palette (force, regardless of data-theme). */
+:root,
+:root[data-theme="dark"],
+:root[data-theme="light"] {
+  --bg:          #eef1f4;
+  --panel:       #ffffff;
+  --raised:      #f5f8fb;
+  --raised-hi:   #e3e8ee;
+  --border:      #d8dde3;
+  --text:        #3b4554;
+  --text-strong: #0c1219;
+  --text-soft:   #3b4554;
+  --text-mute:   #6b7785;
+  --text-faint:  #9ba4b1;
+  --accent:      #0891b2;       /* cyan console accent */
+  --accent-warm: #b45309;
+  --user-bubble: #0891b2;
+  --user-text:   #ffffff;
+  --error-bg:    rgba(185,28,28,0.08);
+  --error-bd:    #b91c1c;
+  --error-fg:    #b91c1c;
+  --code-bg:     #f5f8fb;
+  --code-fg:     #0e7490;
+  --pre-bg:      #f5f8fb;
+  --pre-fg:      #3b4554;
+  --focus-ring:  rgba(8,145,178,0.40);
+  --shadow-sb:   none;
+  --font-ui:     'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono:   'JetBrains Mono', 'Courier New', monospace;
+}
+
+body {
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  background-color: #eef1f4;
+  background-image:
+    linear-gradient(#e3e8ee 1px, transparent 1px),
+    linear-gradient(90deg, #e3e8ee 1px, transparent 1px);
+  background-size: 64px 64px; background-position: -1px -1px;
+}
+
+/* 2 — Header / brand → mono uppercase, hairline. */
+header { border-bottom: 1px solid #b7bfc9 !important; background: #ffffff !important; }
+.section-title { font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.12em; color: #0c1219; }
+.agent-mode-badge {
+  font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.12em;
+  border: 1px solid var(--accent); color: var(--accent); background: var(--accent-bg, rgba(8,145,178,.10)); border-radius: 2px;
+}
+#clear-chat, #theme-toggle, #toggle-suggestions {
+  font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.08em;
+  border-radius: 2px; border: 1px solid #b7bfc9;
+}
+
+/* 3 — Suggestions sidebar → console nav. */
+#suggestions { background: #ffffff !important; border-right: 1px solid #b7bfc9 !important; box-shadow: none !important; }
+.sidebar-title { font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.16em; color: #6b7785; }
+.suggestion-category > summary {
+  font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.10em;
+  font-size: 12px; color: #3b4554;
+}
+.suggestion {
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  border-radius: 2px; border: 1px solid var(--border);
+}
+.suggestion:hover { border-color: var(--accent); color: var(--accent); background: rgba(8,145,178,0.06); }
+.sidebar-footer { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #9ba4b1; }
+
+/* 4 — Chat messages + composer. */
+#chat-area .msg, #chat-area .bubble, .message { border-radius: 2px; }
+#input-bar { border-top: 1px solid #b7bfc9; background: #ffffff; }
+#query-input {
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  border-radius: 2px; border: 1px solid #b7bfc9; background: #ffffff;
+}
+#query-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--focus-ring); outline: none; }
+#send-btn {
+  font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.10em;
+  border-radius: 2px; border: 1px solid var(--accent); color: var(--accent); background: rgba(8,145,178,0.10);
+}
+#send-btn:hover:not(:disabled) { background: var(--accent); color: #fff; }
+
+/* 5 — Markdown surfaces in answers. */
+#chat-area table { font-family: 'JetBrains Mono', monospace; border-collapse: collapse; }
+#chat-area th { text-transform: uppercase; letter-spacing: 0.08em; font-size: 11px; background: #f5f8fb; border-bottom: 1px solid #b7bfc9; }
+#chat-area td { border-bottom: 1px solid var(--border); }
+#chat-area pre, #chat-area code { font-family: 'JetBrains Mono', monospace; }
+#chat-area pre { border-left: 2px solid var(--accent); border-radius: 0; }

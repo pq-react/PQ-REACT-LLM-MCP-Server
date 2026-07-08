@@ -1,0 +1,693 @@
+# Regulatory knowledge base for the PQ-REACT recommendation engine.
+#
+# Status: DRAFT v1 — initial curation 2026-05-06.
+# Article numbers and adoption dates should be cross-checked against the
+# official OJ text or agency publication before any compliance-driven
+# decision is published from the chat agent.
+#
+# Schema convention (will be lifted into SQL DDL after a review pass):
+#   - regulations[]            top-level list, one per instrument
+#     - id                     short stable slug (used as FK below)
+#     - name                   short human name
+#     - long_name              official title
+#     - kind                   directive | regulation | standard | guidance | statement
+#     - body                   issuing body (EU, NIST, IEC, 3GPP, US-HHS, …)
+#     - jurisdiction           EU | US | global | (per-MS for transposition)
+#     - effective_date         YYYY-MM-DD (or null if not yet adopted)
+#     - pqc_deadline           YYYY-MM-DD or null (latest concrete migration deadline)
+#     - sector_scope           list of: energy, telco, health, financial, cross-sector, public
+#     - summary                ≤ 2-sentence plain-English summary
+#     - source_url             authoritative reference
+#     - obligations[]          concrete obligations; each:
+#         - article_ref          textual ref ("Art. 21(2)(h)" / "§164.312(a)(2)(iv)")
+#         - obligation_text      ≤ 2-sentence obligation
+#         - obligation_type      inventory | migration | reporting | certification |
+#                                encryption-policy | key-management | risk-assessment
+#         - affected_sectors     list (subset of sector_scope)
+#         - deadline             YYYY-MM-DD or null
+#         - crypto_relevance     1..5 (5 = directly mandates PQC; 1 = indirect)
+#         - algorithm_map        nullable; if non-null:
+#             nist_level_min     1 | 3 | 5
+#             recommended_families  [ ML-KEM, ML-DSA, SLH-DSA, AES-256, SHA3, ... ]
+#             hybrid_required    bool
+#             notes              free text
+#
+#   - sector_profiles[]        derived index, one per pilot sector
+#     - sector_id              energy | telco | health | financial
+#     - applicable_regulations list of regulation ids
+#     - priority_assets        list of strings (the crypto surface that matters most)
+#     - typical_crypto_surface free text
+#     - migration_complexity   1..5 (5 = highest)
+#     - long_lived_data        bool (drives "harvest-now-decrypt-later" risk)
+
+regulations:
+
+  # ─── EU horizontal cybersecurity ───────────────────────────────────────
+  - id: nis2
+    name: NIS2
+    long_name: "Directive (EU) 2022/2555 — measures for a high common level of cybersecurity"
+    kind: directive
+    body: EU
+    jurisdiction: EU
+    effective_date: 2024-10-17        # transposition deadline
+    pqc_deadline: 2030-12-31           # critical-infra deadline per EU PQC roadmap
+    sector_scope: [energy, telco, health, financial, cross-sector, public]
+    summary: >
+      Sets risk-management and incident-reporting obligations on essential
+      and important entities. Subsequent EU policy (incl. the proposed
+      COM(2026) 13 amendment) layers on PQC transition planning, asset
+      inventory, and crypto-agility requirements.
+    source_url: "https://eur-lex.europa.eu/eli/dir/2022/2555/oj"
+    obligations:
+      - article_ref: "Art. 21(2)(h)"
+        obligation_text: >
+          Essential and important entities must use cryptography, including
+          end-to-end encryption where appropriate, as part of their
+          state-of-the-art technical risk-management measures.
+        obligation_type: encryption-policy
+        affected_sectors: [energy, telco, health, financial, cross-sector, public]
+        deadline: 2024-10-17
+        crypto_relevance: 4
+        algorithm_map:
+          nist_level_min: 3
+          recommended_families: [ML-KEM, ML-DSA, AES-256, SHA-256, SHA3-256]
+          hybrid_required: true
+          notes: >
+            "State of the art" is a moving target. Current state of the
+            art for new deployments includes hybrid PQC key exchange.
+      - article_ref: "Art. 21(2)(i)"
+        obligation_text: >
+          Use of secure authentication, including MFA where appropriate,
+          and continuous authentication solutions.
+        obligation_type: encryption-policy
+        affected_sectors: [energy, telco, health, financial, cross-sector, public]
+        deadline: 2024-10-17
+        crypto_relevance: 3
+        algorithm_map:
+          nist_level_min: 3
+          recommended_families: [ML-DSA, SLH-DSA]
+          hybrid_required: true
+          notes: PQC signatures for client-cert / mTLS auth.
+      - article_ref: "Art. 7(2)(k) — proposed by COM(2026) 13"
+        obligation_text: >
+          National cybersecurity strategies must include a policy and
+          measures for transitioning to post-quantum cryptography,
+          including a cryptographic asset inventory.
+        obligation_type: migration
+        affected_sectors: [energy, telco, health, financial, cross-sector, public]
+        deadline: 2026-12-31           # MS strategies in place by end of 2026
+        crypto_relevance: 5
+        algorithm_map:
+          nist_level_min: 3
+          recommended_families: [ML-KEM, ML-DSA, SLH-DSA]
+          hybrid_required: true
+          notes: >
+            Tracks the EU PQC Coordinated Roadmap timeline. Article
+            number is provisional pending COM(2026) 13 adoption.
+      - article_ref: "Art. 23"
+        obligation_text: >
+          Notification of significant incidents within 24 h (early warning),
+          72 h (incident notification), and final report within 1 month.
+        obligation_type: reporting
+        affected_sectors: [energy, telco, health, financial, cross-sector, public]
+        deadline: 2024-10-17
+        crypto_relevance: 1
+        algorithm_map: null
+
+  - id: dora
+    name: DORA
+    long_name: "Regulation (EU) 2022/2554 — Digital Operational Resilience Act"
+    kind: regulation
+    body: EU
+    jurisdiction: EU
+    effective_date: 2025-01-17
+    pqc_deadline: 2030-12-31
+    sector_scope: [financial]
+    summary: >
+      Directly applicable regulation requiring financial entities to
+      implement an ICT risk-management framework, including a documented
+      encryption and cryptographic-controls policy with periodic review.
+    source_url: "https://eur-lex.europa.eu/eli/reg/2022/2554/oj"
+    obligations:
+      - article_ref: "Art. 9(2)"
+        obligation_text: >
+          Financial entities shall use solutions and processes that ensure
+          the security of the means of transfer of data, prevent the lack
+          of availability, and ensure the authenticity, integrity and
+          confidentiality of data.
+        obligation_type: encryption-policy
+        affected_sectors: [financial]
+        deadline: 2025-01-17
+        crypto_relevance: 4
+        algorithm_map:
+          nist_level_min: 3
+          recommended_families: [ML-KEM, ML-DSA, AES-256]
+          hybrid_required: true
+          notes: Applies in full to TLS, IPsec, and at-rest encryption.
+      - article_ref: "RTS on ICT risk-management — Art. 6(2)(b)"
+        obligation_text: >
+          Cryptographic key management policy must include rules for
+          generation, distribution, storage, change, archiving, and
+          destruction. Annual review of the cryptographic-controls policy
+          and residual-risk re-assessment is mandatory.
+        obligation_type: key-management
+        affected_sectors: [financial]
+        deadline: 2025-01-17
+        crypto_relevance: 5
+        algorithm_map:
+          nist_level_min: 3
+          recommended_families: [ML-KEM, ML-DSA, SLH-DSA]
+          hybrid_required: true
+          notes: >
+            Annual residual-risk re-assessment is the natural hook for
+            tracking PQC algorithm performance regressions surfaced by
+            the CAM agility loop.
+      - article_ref: "RTS on ICT risk-management — Art. 6(3)"
+        obligation_text: >
+          Cryptographic asset inventory required as part of ICT
+          risk-management; tracks the algorithms, key lengths, and
+          certificates in use across the financial entity.
+        obligation_type: inventory
+        affected_sectors: [financial]
+        deadline: 2025-01-17
+        crypto_relevance: 5
+        algorithm_map: null
+
+  - id: eidas2
+    name: eIDAS 2.0
+    long_name: "Regulation (EU) 2024/1183 — European Digital Identity Framework"
+    kind: regulation
+    body: EU
+    jurisdiction: EU
+    effective_date: 2024-05-20
+    pqc_deadline: 2035-12-31           # full migration; eIDAS PKI has long lead times
+    sector_scope: [cross-sector, public, financial, health]
+    summary: >
+      Establishes the European Digital Identity Wallet and updates trust
+      services. Heavily PKI-bound; Wallets and qualified trust service
+      providers are NIS2 essential entities. Long crypto-migration lead
+      time because of certificate validity periods.
+    source_url: "https://eur-lex.europa.eu/eli/reg/2024/1183/oj"
+    obligations:
+      - article_ref: "Art. 5a (Wallet trust framework)"
+        obligation_text: >
+          European Digital Identity Wallets must rely on cryptographic
+          mechanisms providing high assurance, with key generation,
+          storage, and use under the sole control of the user.
+        obligation_type: encryption-policy
+        affected_sectors: [cross-sector, public, financial, health]
+        deadline: 2026-11-21
+        crypto_relevance: 5
+        algorithm_map:
+          nist_level_min: 3
+          recommended_families: [ML-KEM, ML-DSA]
+          hybrid_required: true
+          notes: >
+            Wallet KEM for relying-party flows; signature for credential
+            issuance. CEN/CENELEC implementing acts will pin specifics.
+      - article_ref: "Art. 24 (Qualified trust services)"
+        obligation_text: >
+          Qualified trust service providers issue qualified certificates
+          and qualified electronic signatures/seals. Must use crypto
+          algorithms approved by ENISA / CEN-CENELEC.
+        obligation_type: certification
+        affected_sectors: [cross-sector]
+        deadline: null
+        crypto_relevance: 5
+        algorithm_map:
+          nist_level_min: 3
+          recommended_families: [ML-DSA, SLH-DSA]
+          hybrid_required: true
+          notes: SLH-DSA is conservative fallback for long-lived signatures.
+
+  - id: eu_pqc_roadmap
+    name: EU PQC Roadmap
+    long_name: "EU Coordinated Roadmap for the Transition to Post-Quantum Cryptography"
+    kind: statement
+    body: EU NIS Cooperation Group
+    jurisdiction: EU
+    effective_date: 2025-06-01
+    pqc_deadline: 2035-12-31
+    sector_scope: [cross-sector]
+    summary: >
+      Joint Member-State + Commission roadmap. Sets phased migration
+      milestones: national strategies by end of 2026, critical
+      infrastructure migrated by 2030, all systems by 2035.
+    source_url: "https://digital-strategy.ec.europa.eu/"
+    obligations:
+      - article_ref: "Milestone 1"
+        obligation_text: >
+          Each Member State adopts a national PQC transition strategy.
+        obligation_type: migration
+        affected_sectors: [cross-sector]
+        deadline: 2026-12-31
+        crypto_relevance: 5
+        algorithm_map: null
+      - article_ref: "Milestone 2"
+        obligation_text: >
+          Critical infrastructure operators (NIS2 Annex I sectors) must
+          have completed PQC migration of high-risk use cases.
+        obligation_type: migration
+        affected_sectors: [energy, telco, health, financial]
+        deadline: 2030-12-31
+        crypto_relevance: 5
+        algorithm_map:
+          nist_level_min: 3
+          recommended_families: [ML-KEM, ML-DSA]
+          hybrid_required: true
+          notes: 2030 is the key cutoff for any "harvest-now-decrypt-later" exposure.
+      - article_ref: "Milestone 3"
+        obligation_text: >
+          All in-scope ICT systems migrated, including legacy.
+        obligation_type: migration
+        affected_sectors: [cross-sector]
+        deadline: 2035-12-31
+        crypto_relevance: 5
+        algorithm_map:
+          nist_level_min: 3
+          recommended_families: [ML-KEM, ML-DSA, SLH-DSA]
+          hybrid_required: false
+          notes: By 2035, hybrid is no longer required (pure PQC acceptable).
+
+  - id: eu_quantum_act
+    name: EU Quantum Act (proposed)
+    long_name: "Proposed Regulation on Quantum Strategy & Standards (working title)"
+    kind: regulation
+    body: EU
+    jurisdiction: EU
+    effective_date: null               # not yet adopted
+    pqc_deadline: null
+    sector_scope: [cross-sector]
+    summary: >
+      Anticipated mid-2026 binding regulation to institutionalize EU
+      quantum strategy. Will harmonize PQC standards via CEN/CENELEC and
+      create ENISA-led certification pathways.
+    source_url: "https://digital-strategy.ec.europa.eu/"   # placeholder
+    obligations:
+      - article_ref: "(draft) Art. — to be assigned"
+        obligation_text: >
+          Mandatory PQC certification scheme tier for high-assurance
+          products under the EU Cybersecurity Act framework.
+        obligation_type: certification
+        affected_sectors: [cross-sector]
+        deadline: null
+        crypto_relevance: 5
+        algorithm_map: null
+
+  - id: csa_eucc
+    name: EU CSA + EUCC
+    long_name: "Regulation (EU) 2019/881 (Cybersecurity Act) + Common Criteria scheme (EUCC)"
+    kind: regulation
+    body: EU
+    jurisdiction: EU
+    effective_date: 2024-02-27         # EUCC adoption
+    pqc_deadline: null
+    sector_scope: [cross-sector, energy, telco, health]
+    summary: >
+      Establishes EU-wide cybersecurity certification framework. NIS2
+      essential entities can demonstrate "state-of-the-art" compliance
+      via EUCC-certified products (encryption modules, network gear,
+      medical devices).
+    source_url: "https://eur-lex.europa.eu/eli/reg/2019/881/oj"
+    obligations:
+      - article_ref: "EUCC — substantial / high assurance levels"
+        obligation_text: >
+          Certified products at substantial / high assurance levels
+          must implement crypto algorithms recommended by ENISA, with
+          PQC algorithms expected to be added to ENISA recommendations
+          alongside FIPS-203 / 204 / 205.
+        obligation_type: certification
+        affected_sectors: [cross-sector, energy, telco, health]
+        deadline: null
+        crypto_relevance: 4
+        algorithm_map:
+          nist_level_min: 3
+          recommended_families: [ML-KEM, ML-DSA]
+          hybrid_required: true
+          notes: ENISA tracking of PQC inclusion is ongoing.
+
+  # ─── Sector-specific standards / specs ─────────────────────────────────
+  - id: iec_62351
+    name: IEC 62351
+    long_name: "IEC 62351 series — Power systems management and associated information exchange"
+    kind: standard
+    body: IEC
+    jurisdiction: global
+    effective_date: 2020-09-01         # current series; rev cycle every ~3-4 yrs
+    pqc_deadline: 2030-12-31           # aligned with NIS2 critical-infra cutoff
+    sector_scope: [energy]
+    summary: >
+      Security profiles for power-system protocols including IEC 61850
+      (MMS, GOOSE, SV), IEC 60870-5-104, and DNP3. Currently mandates
+      RSA / ECC primitives — the explicit PQC gap for the smart-grid pilot.
+    source_url: "https://webstore.iec.ch/publication/6912"
+    obligations:
+      - article_ref: "IEC 62351-3 (TLS profiles)"
+        obligation_text: >
+          TCP/IP power-protocol traffic must use TLS 1.2+ with mutual
+          X.509 authentication. Cipher suite selection follows the
+          standard's profile.
+        obligation_type: encryption-policy
+        affected_sectors: [energy]
+        deadline: null
+        crypto_relevance: 5
+        algorithm_map:
+          nist_level_min: 3
+          recommended_families: [ML-KEM, ML-DSA]
+          hybrid_required: true
+          notes: >
+            Hybrid TLS 1.3 (X25519 + ML-KEM-768) is the recommended
+            transition path; X.509 cert chain must move to ML-DSA-65.
+      - article_ref: "IEC 62351-5 (Auth for IEC 60870-5)"
+        obligation_text: >
+          Application-layer message authentication for IEC 60870-5-101/104.
+          Currently HMAC-SHA-256 on a pre-shared key derived from a
+          challenge.
+        obligation_type: encryption-policy
+        affected_sectors: [energy]
+        deadline: null
+        crypto_relevance: 3
+        algorithm_map:
+          nist_level_min: 3
+          recommended_families: [HMAC-SHA-256, AES-CMAC]
+          hybrid_required: false
+          notes: >
+            Symmetric primitives — quantum-safe at level 3 once key length
+            is doubled (AES-256 / SHA-384). Key establishment is the
+            asymmetric weakness, addressed via 62351-9.
+      - article_ref: "IEC 62351-9 (Key management)"
+        obligation_text: >
+          Lifecycle management of cryptographic keys for power-system
+          devices: distribution, rotation, revocation. Ties into PKI.
+        obligation_type: key-management
+        affected_sectors: [energy]
+        deadline: null
+        crypto_relevance: 5
+        algorithm_map:
+          nist_level_min: 3
+          recommended_families: [ML-KEM, ML-DSA]
+          hybrid_required: true
+
+  - id: 3gpp_sa3
+    name: 3GPP SA3
+    long_name: "3GPP TS 33.501 — Security architecture and procedures for 5G System"
+    kind: standard
+    body: 3GPP
+    jurisdiction: global
+    effective_date: 2018-06-01         # initial; updated every release
+    pqc_deadline: 2030-12-31
+    sector_scope: [telco]
+    summary: >
+      Defines the 5G security architecture: AKA, SUCI/SUPI concealment,
+      inter-NF TLS over the SBI, IPsec on N2/N3, and certificate handling
+      for NF mutual authentication. PQC study items in Releases 19 / 20.
+    source_url: "https://portal.3gpp.org/"
+    obligations:
+      - article_ref: "TS 33.501 §6 (AKA)"
+        obligation_text: >
+          5G-AKA / EAP-AKA' authentication uses Milenage / TUAK with
+          symmetric keys provisioned in SIM/USIM. Quantum-resistant for
+          the symmetric surface; weak link is SUCI ECIES key exchange.
+        obligation_type: encryption-policy
+        affected_sectors: [telco]
+        deadline: null
+        crypto_relevance: 4
+        algorithm_map:
+          nist_level_min: 3
+          recommended_families: [ML-KEM]
+          hybrid_required: true
+          notes: SUCI scheme replacement (ECIES → KEM-based concealment).
+      - article_ref: "TS 33.501 §13 (SBA / inter-NF TLS)"
+        obligation_text: >
+          HTTP/2 over TLS 1.3 between NFs on the SBI. Cipher suite +
+          certificate algorithms PQC-relevant. Currently ECDHE +
+          AES-GCM + ECDSA certificates.
+        obligation_type: encryption-policy
+        affected_sectors: [telco]
+        deadline: null
+        crypto_relevance: 5
+        algorithm_map:
+          nist_level_min: 3
+          recommended_families: [ML-KEM, ML-DSA]
+          hybrid_required: true
+          notes: >
+            Hybrid X25519+ML-KEM-768 has measured ~48-49 ms overhead
+            on free5GC sidecar (ref imported as performance_test source
+            '5gc-pqc-benchmark' once the Phase-2 ETL lands).
+      - article_ref: "TS 33.501 §9 (IPsec on N2/N3)"
+        obligation_text: >
+          IPsec/IKEv2 between gNB and UPF/AMF. Currently DH/ECDH key
+          exchange. PQC IKEv2 candidates published by IETF.
+        obligation_type: encryption-policy
+        affected_sectors: [telco]
+        deadline: null
+        crypto_relevance: 5
+        algorithm_map:
+          nist_level_min: 3
+          recommended_families: [ML-KEM]
+          hybrid_required: true
+          notes: StrongSwan plugin-oqs (already in QUJATA stack) supports this.
+
+  # ─── Health-sector specific ────────────────────────────────────────────
+  - id: hipaa_security_rule
+    name: HIPAA Security Rule
+    long_name: "45 CFR Parts 160, 162 and 164 — Health Insurance Portability and Accountability Act"
+    kind: regulation
+    body: US-HHS
+    jurisdiction: US
+    effective_date: 2003-04-21
+    pqc_deadline: null                 # implicit via "harvest-now-decrypt-later"
+    sector_scope: [health]
+    summary: >
+      Encryption of ePHI at rest and in transit is "addressable"
+      (effectively required) under the Security Rule. Long-lived
+      records create harvest-now-decrypt-later exposure.
+    source_url: "https://www.hhs.gov/hipaa/"
+    obligations:
+      - article_ref: "§164.312(a)(2)(iv)"
+        obligation_text: >
+          Implement a mechanism to encrypt and decrypt ePHI.
+        obligation_type: encryption-policy
+        affected_sectors: [health]
+        deadline: null
+        crypto_relevance: 4
+        algorithm_map:
+          nist_level_min: 3
+          recommended_families: [AES-256, ML-KEM, ML-DSA]
+          hybrid_required: true
+          notes: AES-256 + ML-KEM hybrid for transit; AES-256 for rest.
+      - article_ref: "§164.312(e)(2)(ii)"
+        obligation_text: >
+          Implement a mechanism to encrypt ePHI when transmitted over
+          electronic communications networks (e.g. TLS, IPsec, S/MIME).
+        obligation_type: encryption-policy
+        affected_sectors: [health]
+        deadline: null
+        crypto_relevance: 5
+        algorithm_map:
+          nist_level_min: 3
+          recommended_families: [ML-KEM, ML-DSA]
+          hybrid_required: true
+
+  - id: ehds
+    name: EHDS
+    long_name: "Regulation (EU) 2025/327 — European Health Data Space"
+    kind: regulation
+    body: EU
+    jurisdiction: EU
+    effective_date: 2025-03-26         # entry into force
+    pqc_deadline: 2030-12-31
+    sector_scope: [health]
+    summary: >
+      Establishes secondary use of health data and an EU-wide health
+      data exchange infrastructure (MyHealth@EU). Requires strong
+      encryption and access controls; long-retention records are
+      explicit harvest-now-decrypt-later targets.
+    source_url: "https://eur-lex.europa.eu/eli/reg/2025/327/oj"
+    obligations:
+      - article_ref: "Art. 28 (Security)"
+        obligation_text: >
+          Health-data holders and access bodies must implement
+          state-of-the-art technical safeguards including encryption
+          for data in transit and at rest.
+        obligation_type: encryption-policy
+        affected_sectors: [health]
+        deadline: 2025-03-26
+        crypto_relevance: 4
+        algorithm_map:
+          nist_level_min: 3
+          recommended_families: [ML-KEM, ML-DSA, AES-256]
+          hybrid_required: true
+      - article_ref: "Art. 50 (Cross-border infrastructure)"
+        obligation_text: >
+          Cross-border health-data exchange via MyHealth@EU must use
+          secure communication channels with strong authentication.
+        obligation_type: encryption-policy
+        affected_sectors: [health]
+        deadline: 2026-12-31           # phased rollout
+        crypto_relevance: 5
+        algorithm_map:
+          nist_level_min: 3
+          recommended_families: [ML-KEM, ML-DSA]
+          hybrid_required: true
+
+  # ─── Algorithmic baseline ──────────────────────────────────────────────
+  - id: nist_pqc_fips
+    name: NIST PQC FIPS
+    long_name: "FIPS 203 (ML-KEM), FIPS 204 (ML-DSA), FIPS 205 (SLH-DSA)"
+    kind: standard
+    body: NIST
+    jurisdiction: US
+    effective_date: 2024-08-13
+    pqc_deadline: null
+    sector_scope: [cross-sector]
+    summary: >
+      The algorithmic foundation that all of the above regulations
+      converge on. ML-KEM-512/768/1024 (≈ Kyber) for KEM; ML-DSA-44/65/87
+      (≈ Dilithium) for primary signatures; SLH-DSA (≈ SPHINCS+) as
+      stateless hash-based fallback for long-lived signatures.
+    source_url: "https://csrc.nist.gov/projects/post-quantum-cryptography"
+    obligations:
+      - article_ref: "FIPS 203"
+        obligation_text: >
+          ML-KEM is the standardized post-quantum key-encapsulation
+          mechanism. Three parameter sets: ML-KEM-512 (NIST L1),
+          ML-KEM-768 (L3), ML-KEM-1024 (L5).
+        obligation_type: encryption-policy
+        affected_sectors: [cross-sector]
+        deadline: 2024-08-13
+        crypto_relevance: 5
+        algorithm_map:
+          nist_level_min: 1
+          recommended_families: [ML-KEM]
+          hybrid_required: false
+      - article_ref: "FIPS 204"
+        obligation_text: >
+          ML-DSA is the primary post-quantum digital signature scheme.
+          Three parameter sets: ML-DSA-44 (L2), ML-DSA-65 (L3), ML-DSA-87 (L5).
+        obligation_type: encryption-policy
+        affected_sectors: [cross-sector]
+        deadline: 2024-08-13
+        crypto_relevance: 5
+        algorithm_map:
+          nist_level_min: 2
+          recommended_families: [ML-DSA]
+          hybrid_required: false
+      - article_ref: "FIPS 205"
+        obligation_text: >
+          SLH-DSA (stateless hash-based) is the conservative-fallback
+          signature scheme. Higher signature sizes; recommended where
+          long-term forward security is paramount (e.g. eIDAS root
+          certificates, software supply chain).
+        obligation_type: encryption-policy
+        affected_sectors: [cross-sector]
+        deadline: 2024-08-13
+        crypto_relevance: 4
+        algorithm_map:
+          nist_level_min: 1
+          recommended_families: [SLH-DSA]
+          hybrid_required: false
+
+# ─── Sector profiles ─────────────────────────────────────────────────────
+sector_profiles:
+
+  - sector_id: energy
+    applicable_regulations:
+      - nis2
+      - eu_pqc_roadmap
+      - eu_quantum_act
+      - csa_eucc
+      - iec_62351
+    priority_assets:
+      - smart_meters_dlms_cosem
+      - rtu_ied_iec61850
+      - rtu_ied_iec60870_5_104
+      - scada_master_stations
+      - distribution_automation_gateways
+      - der_inverters
+    typical_crypto_surface: >
+      TLS 1.2/1.3 on IEC 60870-5-104 connections (62351-3); HMAC-SHA-256
+      on -101/-104 messages (62351-5); X.509 mutual TLS; PKI under
+      62351-9; RBAC under 62351-8.
+    migration_complexity: 5            # device fleets, long depreciation, OT downtime cost
+    long_lived_data: false              # control-plane traffic, not stored long-term
+    notes: >
+      Highest migration complexity of the three pilots. Device
+      certificates often baked into firmware; field replacement cycles
+      are 10-20 years. Crypto-agility profiles (62351-9) are the
+      mitigation.
+
+  - sector_id: telco
+    applicable_regulations:
+      - nis2
+      - eu_pqc_roadmap
+      - eu_quantum_act
+      - csa_eucc
+      - 3gpp_sa3
+    priority_assets:
+      - 5g_sba_inter_nf_tls
+      - 5g_n2_n3_ipsec
+      - 5g_aka_suci_concealment
+      - sim_esim_provisioning_pki
+      - ims_vonr_sip_tls
+      - ran_ima_certificates
+    typical_crypto_surface: >
+      TLS 1.3 on SBI (HTTP/2), IKEv2/IPsec on N2/N3, ECIES on SUCI,
+      PKI for NF mTLS and SIM provisioning. Already-deployed OQS-OpenSSL
+      and StrongSwan-plugin-oqs in the QUJATA testbed.
+    migration_complexity: 3            # software-defined NFs, CI/CD friendly
+    long_lived_data: false
+    notes: >
+      Most amenable to hybrid PQC rollout because NFs are containerized
+      and roll forward via Helm. SUCI is the visible quantum-vulnerable
+      surface for subscriber privacy.
+
+  - sector_id: health
+    applicable_regulations:
+      - nis2
+      - eu_pqc_roadmap
+      - csa_eucc
+      - hipaa_security_rule
+      - ehds
+    priority_assets:
+      - fhir_rest_api_tls
+      - hl7_v2_mllp_tls
+      - dicom_tls
+      - iomt_device_certs
+      - ehr_db_at_rest_kek
+      - eprescription_signatures
+    typical_crypto_surface: >
+      TLS 1.2/1.3 on REST/MLLP/DICOM endpoints; OAuth 2.0 JWT signing
+      (RSA/ECDSA today) on FHIR; AES-128/256 at rest with RSA/ECDH key
+      wrapping; long-validity X.509 chains for prescription signatures.
+    migration_complexity: 4            # device fleets + long retention
+    long_lived_data: true               # ← the harvest-now-decrypt-later concern
+    notes: >
+      Long-lived patient records make harvest-now-decrypt-later the
+      defining risk. SLH-DSA preferred for prescription signatures
+      (long-term forward security). FHIR REST API call patterns are
+      small JSON payloads at high frequency — PQC handshake overhead
+      matters more than payload-size.
+
+  - sector_id: financial
+    applicable_regulations:
+      - nis2
+      - dora
+      - eidas2
+      - eu_pqc_roadmap
+      - csa_eucc
+    priority_assets:
+      - tls_terminating_proxies
+      - card_processing_hsms
+      - transaction_signing
+      - core_banking_pki
+      - swift_messaging
+    typical_crypto_surface: >
+      TLS everywhere; HSM-backed signing keys; long-lived signatures
+      on transactions for audit; eIDAS qualified certificates for
+      e-signatures.
+    migration_complexity: 4            # HSM firmware, audit trails, regulatory scrutiny
+    long_lived_data: true
+    notes: >
+      DORA's annual residual-risk re-assessment is the natural cadence
+      for re-running CAM benchmarks against the inventory.

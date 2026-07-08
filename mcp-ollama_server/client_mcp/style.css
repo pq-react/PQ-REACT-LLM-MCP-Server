@@ -1,0 +1,602 @@
+/* PQ-REACT chat — variable-driven palette so dark/light theming is one
+   `data-theme` attribute on <html>. Default = dark (matches the
+   pre-existing colour story). Light = override block below.
+
+   The bootstrap script in index.html sets data-theme before the
+   stylesheet loads, so we don't flash the wrong theme. */
+
+:root,
+:root[data-theme="dark"] {
+  /* surfaces */
+  --bg:          #0f1117;
+  --panel:       #1a1d27;
+  --panel-2:     #161924;
+  --raised:      #1e2233;
+  --raised-hi:   #2b4976;
+  --border:      #2d3148;
+  --border-2:    #232938;
+
+  /* text */
+  --text:        #b9c3d0;
+  --text-strong: #e6edf3;
+  --text-soft:   #968db2;
+  --text-mute:   #64748b;
+  --text-faint:  #4a5468;
+
+  /* accents */
+  --accent:      #c4b5e3;        /* purple-lilac */
+  --accent-2:    #58a6ff;        /* link blue    */
+  --accent-3:    #4ade80;        /* status green */
+  --accent-warm: #f97316;
+  --user-bubble: #746096;
+  --user-text:   #f3f3f3;
+  --error-bg:    #3f1d1d;
+  --error-bd:    #7f1d1d;
+  --error-fg:    #f87171;
+
+  /* code blocks inside assistant messages */
+  --code-bg:     #1a1d27;
+  --code-fg:     #c4b5e3;
+  --pre-bg:      #0f1218;
+  --pre-fg:      #c9d1d9;
+
+  /* shadows + focus */
+  --shadow-sb:   4px 0 12px rgba(0,0,0,0.6);
+  --focus-ring:  rgba(116, 96, 150, 0.7);
+}
+
+:root[data-theme="light"] {
+  /* surfaces */
+  --bg:          #f7f8fb;
+  --panel:       #ffffff;
+  --panel-2:     #f0f2f8;
+  --raised:      #ffffff;
+  --raised-hi:   #d8e3f5;
+  --border:      #d8dde8;
+  --border-2:    #e7eaf1;
+
+  /* text */
+  --text:        #2a2f3a;
+  --text-strong: #0d1117;
+  --text-soft:   #4f5871;
+  --text-mute:   #6b7589;
+  --text-faint:  #8893a8;
+
+  /* accents */
+  --accent:      #6d4ed1;        /* slightly darker purple for contrast on light */
+  --accent-2:    #1f6feb;
+  --accent-3:    #16a34a;
+  --accent-warm: #c2410c;
+  --user-bubble: #6d4ed1;
+  --user-text:   #ffffff;
+  --error-bg:    #fee2e2;
+  --error-bd:    #f87171;
+  --error-fg:    #b91c1c;
+
+  /* code blocks */
+  --code-bg:     #f0f2f8;
+  --code-fg:     #4338ca;
+  --pre-bg:      #f4f6fa;
+  --pre-fg:      #1f2937;
+
+  --shadow-sb:   4px 0 12px rgba(0,0,0,0.10);
+  --focus-ring:  rgba(109, 78, 209, 0.35);
+}
+
+/* No saved choice + system says light → flip to light. The bootstrap
+   script handles the data-theme attribute, so this is just a safety net. */
+@media (prefers-color-scheme: light) {
+  :root[data-theme="auto"] {
+    --bg:          #f7f8fb;
+    --panel:       #ffffff;
+    --panel-2:     #f0f2f8;
+    --raised:      #ffffff;
+    --raised-hi:   #d8e3f5;
+    --border:      #d8dde8;
+    --border-2:    #e7eaf1;
+    --text:        #2a2f3a;
+    --text-strong: #0d1117;
+    --text-soft:   #4f5871;
+    --text-mute:   #6b7589;
+    --text-faint:  #8893a8;
+    --accent:      #6d4ed1;
+    --accent-2:    #1f6feb;
+    --accent-3:    #16a34a;
+    --user-bubble: #6d4ed1;
+    --user-text:   #ffffff;
+    --code-bg:     #f0f2f8;
+    --code-fg:     #4338ca;
+    --pre-bg:      #f4f6fa;
+    --pre-fg:      #1f2937;
+  }
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: background 0.18s, color 0.18s;
+}
+
+/* ── Two-column layout: sidebar + chat-pane ─────────────────────── */
+#main-row {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+#chat-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* ── Header ─────────────────────────────────────────────────────── */
+header {
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.brand-link { display: flex; align-items: center; }
+.brand-logo {
+  height: 36px;
+  width: auto;
+  max-width: 180px;
+  display: block;
+}
+:root[data-theme="light"] .brand-logo { filter: invert(1) hue-rotate(180deg); }
+@media (prefers-color-scheme: light) {
+  :root[data-theme="auto"] .brand-logo { filter: invert(1) hue-rotate(180deg); }
+}
+
+.header-divider {
+  width: 1px; height: 22px;
+  background: var(--border);
+  margin: 0 4px;
+}
+header h1.section-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-soft);
+}
+.agent-mode-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+#status-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  transition: background 0.3s;
+}
+#status-dot.connected { background: var(--accent-3); }
+#status-text { font-size: 0.8rem; color: var(--text-mute); }
+
+#clear-chat, #theme-toggle, #toggle-suggestions {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-soft);
+  height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  font-family: inherit;
+}
+#theme-toggle, #toggle-suggestions { width: 32px; padding: 0; font-size: 0.95rem; }
+#clear-chat   { margin-left: auto; gap: 4px; }
+#theme-toggle { /* the Clear button claims margin-left:auto first;
+                   theme-toggle just sits next to it */ }
+#clear-chat:hover, #theme-toggle:hover, #toggle-suggestions:hover {
+  background: var(--raised);
+  color: var(--accent);
+}
+#toggle-suggestions { display: none; }   /* shown only via media query */
+
+#disconnect-btn {
+  margin-left: 8px;
+  padding: 5px 12px;
+  background: var(--error-bg);
+  color: var(--error-fg);
+  border: 1px solid var(--error-bd);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  display: none;
+}
+#disconnect-btn:hover { background: var(--raised-hi); }
+
+/* ── Suggestions sidebar ───────────────────────────────────────── */
+#suggestions {
+  width: 320px;
+  flex-shrink: 0;
+  padding: 16px 14px;
+  border-right: 1px solid var(--border);
+  background: var(--panel-2);
+  overflow-y: auto;
+}
+#suggestions .sidebar-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 4px;
+  letter-spacing: 0.3px;
+}
+#suggestions .sidebar-hint {
+  font-size: 0.72rem;
+  color: var(--text-mute);
+  margin-bottom: 18px;
+  line-height: 1.5;
+}
+#suggestions .sidebar-hint code {
+  background: var(--panel);
+  border: 1px solid var(--border-2);
+  color: var(--accent);
+  padding: 0 4px;
+  border-radius: 3px;
+  font-size: 0.95em;
+}
+.suggestion-category {
+  margin: 10px 0;
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  background: var(--panel);
+}
+.suggestion-category > summary {
+  cursor: pointer;
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-soft);
+  list-style: none;
+  user-select: none;
+}
+.suggestion-category > summary::-webkit-details-marker { display: none; }
+.suggestion-category > summary::after {
+  content: "▸";
+  float: right;
+  transition: transform 0.15s;
+  color: var(--text-faint);
+}
+.suggestion-category[open] > summary::after { transform: rotate(90deg); }
+.suggestion-category[open] > summary { color: var(--text); }
+.suggestion {
+  display: block;
+  width: calc(100% - 16px);
+  margin: 4px 8px;
+  padding: 7px 10px;
+  background: var(--raised);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  font-family: inherit;
+}
+.suggestion:last-child { margin-bottom: 8px; }
+.suggestion:hover {
+  background: var(--raised-hi);
+  border-color: var(--accent-2);
+  color: var(--text-strong);
+}
+.suggestion:active { transform: scale(0.985); }
+#suggestions .sidebar-footer {
+  margin-top: 24px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-2);
+  font-size: 0.7rem;
+  color: var(--text-faint);
+  line-height: 1.5;
+}
+#suggestions .sidebar-footer code {
+  color: var(--accent);
+  background: var(--panel-2);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 0.95em;
+}
+
+@media (max-width: 720px) {
+  #suggestions {
+    position: absolute;
+    top: 53px; left: 0;
+    height: calc(100% - 53px);
+    z-index: 20;
+    display: none;
+    width: min(86vw, 320px);
+  }
+  #suggestions.open {
+    display: block;
+    box-shadow: var(--shadow-sb);
+  }
+  #toggle-suggestions { display: inline-flex; }
+}
+
+/* ── Splash logo (where the ASCII art used to be) ──────────────── */
+#status-message {
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  padding: 0 16px;
+}
+.splash-logo {
+  filter: drop-shadow(0 4px 18px rgba(0,0,0,0.25));
+}
+:root[data-theme="light"] .splash-logo { filter: invert(1) hue-rotate(180deg) drop-shadow(0 4px 18px rgba(0,0,0,0.10)); }
+@media (prefers-color-scheme: light) {
+  :root[data-theme="auto"] .splash-logo { filter: invert(1) hue-rotate(180deg) drop-shadow(0 4px 18px rgba(0,0,0,0.10)); }
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+#chat-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.message {
+  max-width: 75%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.message.user {
+  align-self: flex-end;
+  background: var(--user-bubble);
+  color: var(--user-text);
+  border-bottom-right-radius: 4px;
+}
+.message.assistant {
+  align-self: flex-start;
+  background: var(--raised);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-bottom-left-radius: 4px;
+  /* The base .message rule sets `white-space: pre-wrap` so raw
+     operator input preserves intentional newlines. Assistant replies
+     are now rendered as HTML by renderMarkdown() in script.js — they
+     have explicit <p>, <br>, and <pre> tags, so pre-wrap on the
+     container would double-up newlines and break paragraph wrapping.
+     Override to `normal`; `<pre>` blocks keep their own inherited
+     `white-space: pre` so code stays formatted. */
+  white-space: normal;
+}
+.message.system-msg {
+  align-self: center;
+  background: transparent;
+  color: var(--text-mute);
+  font-size: 0.78rem;
+  border: none;
+  padding: 2px 0;
+}
+.message.error-msg {
+  align-self: center;
+  background: var(--error-bg);
+  color: var(--error-fg);
+  border: 1px solid var(--error-bd);
+  font-size: 0.82rem;
+}
+
+/* thinking indicator */
+.thinking {
+  align-self: flex-start;
+  display: flex;
+  gap: 4px;
+  padding: 12px 16px;
+  background: var(--raised);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  border-bottom-left-radius: 4px;
+}
+.thinking span {
+  width: 7px; height: 7px;
+  background: var(--accent);
+  border-radius: 50%;
+  animation: bounce 1.2s infinite;
+}
+.thinking span:nth-child(2) { animation-delay: 0.2s; }
+.thinking span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30%           { transform: translateY(-6px); opacity: 1; }
+}
+
+/* ── Input bar ─────────────────────────────────────────────────── */
+#input-bar {
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  padding: 10px 16px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+#query-input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text-strong);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  resize: none;
+  outline: none;
+  max-height: 140px;
+  line-height: 1.5;
+  font-family: inherit;
+}
+#query-input:focus { border-color: var(--accent-2); }
+#query-input::placeholder { color: var(--text-mute); }
+
+#send-btn {
+  padding: 10px 20px;
+  background: var(--accent);
+  color: var(--user-text);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: background 0.2s, opacity 0.2s;
+  height: 42px;
+}
+:root[data-theme="dark"]   #send-btn { background: var(--raised-hi); color: #fff; }
+:root[data-theme="light"]  #send-btn { background: var(--accent);    color: var(--user-text); }
+@media (prefers-color-scheme: dark)  { :root[data-theme="auto"] #send-btn { background: var(--raised-hi); color: #fff; } }
+@media (prefers-color-scheme: light) { :root[data-theme="auto"] #send-btn { background: var(--accent);    color: var(--user-text); } }
+#send-btn:hover { filter: brightness(1.1); }
+#send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+#send-btn.highlight {
+  animation: sendpulse 1.5s infinite;
+  box-shadow: 0 0 0 0 var(--focus-ring);
+}
+@keyframes sendpulse {
+  0%   { box-shadow: 0 0 0 0    var(--focus-ring); }
+  70%  { box-shadow: 0 0 0 10px transparent;       }
+  100% { box-shadow: 0 0 0 0    transparent;       }
+}
+
+/* ── Markdown rendering inside assistant messages ─────────────────────
+ *
+ * Plain typographic styling — no accent-colour overrides. The earlier
+ * version painted strong/em/headings/th in `var(--accent)`; on the
+ * dark theme that came out as faded purple which was painful to read
+ * on the dark `--raised` bubble background. Emphasis is conveyed
+ * purely through weight / italics / size / borders here. Inline
+ * `code` and `<pre>` still get a subtle monospace pill so blocks of
+ * identifiers stand out without screaming.
+ */
+.message.assistant strong { font-weight: 700; }
+.message.assistant em     { font-style: italic; }
+
+.message.assistant code {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.88em;
+  background: var(--code-bg);
+  color: inherit;
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+.message.assistant pre {
+  background: var(--pre-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin: 8px 0;
+  overflow-x: auto;
+  font-size: 0.85em;
+  line-height: 1.45;
+  color: inherit;
+}
+.message.assistant pre code {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font-size: 1em;
+}
+
+.message.assistant ul,
+.message.assistant ol { margin: 6px 0 6px 22px; padding: 0; }
+.message.assistant li { margin: 2px 0; }
+
+.message.assistant h1,
+.message.assistant h2,
+.message.assistant h3,
+.message.assistant h4 {
+  color: inherit;
+  margin: 10px 0 6px;
+  font-weight: 700;
+}
+.message.assistant h1 { font-size: 1.18rem; }
+.message.assistant h2 { font-size: 1.10rem; }
+.message.assistant h3 { font-size: 1.02rem; }
+.message.assistant h4 { font-size: 0.96rem; }
+.message.assistant p  { margin: 4px 0; }
+
+.message.assistant blockquote {
+  border-left: 3px solid var(--border);
+  padding: 2px 10px;
+  margin: 6px 0;
+  color: inherit;
+  opacity: 0.85;
+}
+.message.assistant hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 12px 0;
+}
+
+.message.assistant table.md-table {
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 0.86rem;
+  width: auto;
+  max-width: 100%;
+}
+.message.assistant table.md-table th,
+.message.assistant table.md-table td {
+  border: 1px solid var(--border);
+  padding: 4px 9px;
+  text-align: left;
+  vertical-align: top;
+  color: inherit;
+}
+.message.assistant table.md-table thead th {
+  /* Header row gets a subtle background tint + bold weight only — no
+   * colour shift, so contrast with body cells stays readable. */
+  background: var(--panel-2);
+  font-weight: 700;
+}
+/* No zebra-striping — alternating backgrounds made the faded rows
+ * unreadable on the dark theme. */
+
+/* Scrollbar styling — subtle, theme-aware. */
+#suggestions::-webkit-scrollbar,
+#chat-area::-webkit-scrollbar     { width: 8px; height: 8px; }
+#suggestions::-webkit-scrollbar-thumb,
+#chat-area::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+#suggestions::-webkit-scrollbar-thumb:hover,
+#chat-area::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
