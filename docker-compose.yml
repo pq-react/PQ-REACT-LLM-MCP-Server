@@ -44,6 +44,14 @@ services:
       context: .
       dockerfile: Dockerfile.server
     container_name: pqreact-mcp-server
+    # Run an init (tini) as PID 1 so exited healthcheck children are
+    # reaped; without it zombies accumulate until pids.max is hit and
+    # the container turns "unhealthy" (see Dockerfile.server).
+    init: true
+    # Lets the server reach services published on the docker host
+    # (e.g. a local Katana/QUJATA/Besu endpoint) as host.docker.internal.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       DB_HOST: mcp-mariadb
       DB_PORT: 3306
@@ -63,6 +71,16 @@ services:
       KATANA_KPI_BASE:    ${KATANA_KPI_BASE:-}
       KATANA_ALLOW_CREATE: ${KATANA_ALLOW_CREATE:-false}
       KATANA_ALLOW_DELETE: ${KATANA_ALLOW_DELETE:-false}
+      KATANA_ALLOW_CONFIGURE: ${KATANA_ALLOW_CONFIGURE:-false}
+      KATANA_HTTP_TIMEOUT: ${KATANA_HTTP_TIMEOUT:-10}
+      # UC3 (Campaign A) tools — blank = soft-fail / disabled
+      BESU_RPC_BASE:        ${BESU_RPC_BASE:-}
+      UC3_KYBER_HEALTH_URL: ${UC3_KYBER_HEALTH_URL:-}
+      UC3_HTTP_TIMEOUT:     ${UC3_HTTP_TIMEOUT:-5}
+      UC3_ALLOW_EXEC:       ${UC3_ALLOW_EXEC:-false}
+      UC3_BIN_DIR:          ${UC3_BIN_DIR:-}
+      UC3_ARTIFACTS_DIR:    ${UC3_ARTIFACTS_DIR:-}
+      UC3_RUN_TIMEOUT_S:    ${UC3_RUN_TIMEOUT_S:-600}
     ports:
       - "${MCP_SSE_PORT:-5040}:5040"
     depends_on:

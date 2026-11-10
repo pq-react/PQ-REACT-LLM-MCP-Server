@@ -21,7 +21,19 @@ ENV MCP_BIND_HOST=0.0.0.0 \
 
 EXPOSE 5040
 
+# /sse is an endless event stream. The previous check
+# (`curl /sse | head -c 1`) never let curl finish on its own: it outlived
+# the 5 s timeout, docker killed only the shell, and the orphaned
+# curl/head processes were re-parented to PID 1 (python, which does not
+# reap children). On the testbed that leaked two zombies per check until
+# the container's pids.max was exhausted (~9.5k after ~2 days); from then
+# on every healthcheck and `docker exec` failed with
+# "OCI runtime exec failed ... procReady not received" and the container
+# stayed "unhealthy" although SSE was still serving.
+# Bound curl with --max-time so it always exits by itself, and look for
+# the endpoint event the server sends first. Run under `init: true`
+# (see docker-compose.yml) so any stray child is still reaped.
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-    CMD curl -fsS http://127.0.0.1:5040/sse 2>/dev/null | head -c 1 >/dev/null || exit 1
+    CMD curl -sS -N --max-time 3 http://127.0.0.1:5040/sse 2>/dev/null | grep -q '^event: endpoint' || exit 1
 
 CMD ["python", "/app/serve_sse.py"]
