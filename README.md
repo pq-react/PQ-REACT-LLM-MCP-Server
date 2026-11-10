@@ -147,7 +147,14 @@ All vars are read at server start (`mariadb_mcp.py`) or client start (`api.py`/`
 │   └── pqreact-mcp-client.service
 ├── deploy/
 │   ├── install-server.sh
-│   └── install-client.sh
+│   ├── install-client.sh
+│   └── vm-snapshot-20261110/         (what ran on the testbed VMs + unported local patches)
+├── etl/
+│   ├── schema/                       (schema-only .sql for every PQREACT table; mounted into MariaDB initdb)
+│   ├── data/                         (regulations.yaml, device_crypto_specs.yaml)
+│   └── import_*.py, _db.py           (reference-data + measurement importers; see schema_map.md)
+├── asset_inventory/                  (CBOM ingestion service, compose profile `inventory`)
+├── cbom_mcp/client/                  (CBOM "Security Scanner" client; its MCP server is not included)
 └── mcp-ollama_server/
     ├── client_mcp/                   (chat UI: api.py, client.py, index.html, script.js, style.css)
     └── database/                     (mariadb_mcp.py, pqreact_export.sql, setup_db.sh)

@@ -1,0 +1,45 @@
+--- a/mcp-ollama_server/database/mariadb_mcp.py
++++ b/mcp-ollama_server/database/mariadb_mcp.py
+@@ -218,7 +218,7 @@
+                 "SELECT algorithm_name, duration, power_watts, "
+                 "message_size, energy_joules, security_level, source "
+                 "FROM performance_test "
+-                "WHERE LOWER(algorithm_name) = LOWER(%s) "
++                "WHERE LOWER(algorithm_name) = LOWER(%s) AND message_size = 1000 "
+                 "ORDER BY source, message_size",
+                 (algorithm_name,),
+             )
+@@ -289,6 +289,7 @@
+                 "ROUND(AVG(duration), 4) AS avg_duration, "
+                 "ROUND(AVG(power_watts), 4) AS avg_power_watts, "
+                 "COUNT(*) AS sample_count "
++                "WHERE message_size = 1000 "
+                 "FROM performance_test "
+                 "GROUP BY algorithm_name, source "
+                 "HAVING avg_duration IS NOT NULL "
+@@ -326,7 +327,7 @@
+                 "ROUND(AVG(power_watts), 4) AS avg_power_watts, "
+                 "COUNT(*) AS sample_count "
+                 "FROM performance_test "
+-                "WHERE LOWER(algorithm_name) IN (LOWER(%s), LOWER(%s)) "
++                "WHERE LOWER(algorithm_name) IN (LOWER(%s), LOWER(%s)) AND message_size = 1000 "
+                 "GROUP BY algorithm_name, source "
+                 "ORDER BY algorithm_name",
+                 (algo1, algo2),
+@@ -370,7 +371,7 @@
+                 "ROUND(AVG(power_watts), 4) AS avg_power_watts, "
+                 "COUNT(*) AS sample_count "
+                 "FROM performance_test "
+-                "WHERE security_level = %s "
++                "WHERE security_level = %s AND message_size = 1000"
+                 "GROUP BY algorithm_name, security_level, source "
+                 "ORDER BY avg_duration ASC",
+                 (level,),
+@@ -484,6 +485,7 @@
+                 "ROUND(AVG(duration), 4) AS avg_duration, "
+                 "COUNT(*) AS sample_count "
+                 "FROM performance_test "
++		"WHERE message_size = 1000 "
+                 "GROUP BY algorithm_name, source "
+                 "ORDER BY avg_energy_joules ASC"
+             )

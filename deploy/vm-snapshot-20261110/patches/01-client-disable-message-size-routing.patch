@@ -1,0 +1,54 @@
+--- a/mcp-ollama_server/client_mcp/agents.py
++++ b/mcp-ollama_server/client_mcp/agents.py
+@@ -37,7 +37,7 @@
+ # Performance: every numeric / benchmark query against PQREACT.performance_test.
+ PERFORMANCE_TOOLS = [
+     "query_by_algorithm",
+-    "query_by_message_size",
++  #  "query_by_message_size",
+     "query_by_security_level",
+     "compare_algorithms",
+     "get_fastest_algorithms",
+@@ -165,15 +165,15 @@
+     "Tool selection:\n"
+     "  - 'fastest', 'top N speed' → get_fastest_algorithms\n"
+     "  - 'lowest energy' (single algorithm leaderboard) → get_lowest_energy_algorithms\n"
+-    "  - 'lowest energy at size N' → get_lowest_energy_for_size\n"
+-    "  - 'lowest power at size N' → get_lowest_power_for_size\n"
++  #  "  - 'lowest energy at size N' → get_lowest_energy_for_size\n"
++ #   "  - 'lowest power at size N' → get_lowest_power_for_size\n"
+     "  - 'compare A vs B' (two algorithm names) → compare_algorithms\n"
+     "  - 'data for X', 'show me X' (single algo) → query_by_algorithm\n"
+-    "  - 'data at size N' → query_by_message_size\n"
++  #  "  - 'data at size N' → query_by_message_size\n"
+     "  - 'NIST level N' or 'level 3' → query_by_security_level\n"
+     "  - 'how many rows', 'across both sources', 'campaign vs upstream',\n"
+     "    'compare CAM (or any source) to campaign-b-qujata-live\n"
+-    "    (or any source) for the same algorithm / message_size' →\n"
++ #   "    (or any source) for the same algorithm / message_size' →\n"
+     "      execute_query — one SELECT against performance_test grouped\n"
+     "      or joined on the `source` column. Example shape:\n"
+     "        SELECT algorithm_name, message_size, source,\n"
+--- a/mcp-ollama_server/client_mcp/client.py
++++ b/mcp-ollama_server/client_mcp/client.py
+@@ -244,7 +244,8 @@
+             "bike", "hqc", "sphincs", "falcon", "x25519mlkem", "p256_mlkem",
+             "fastest", "slowest", "lowest power", "lowest energy", "ranking",
+             "compare ", "rank by", "leaderboard", "performance_test",
+-            "message size", "msg size", "bytes", "kib", "kilobyte",
++          #  "message size", "msg size", "bytes", 
++            "kib", "kilobyte",
+             "security level", "nist level", "level 1", "level 3", "level 5",
+             "sql", "select ", "rows", "count", "group by",
+         ]
+@@ -530,8 +531,8 @@
+             "  'what should I migrate first in energy?'\n"
+             "      → [INVENTORY] recommend_migration_priority (one tool call;\n"
+             "        joins inventory ↔ obligations ↔ benchmarks internally)\n"
+-            "  'what does mlkem768 look like at 1200 bytes?'\n"
+-            "      → [DB] query_by_algorithm or query_by_message_size\n\n"
++         #   "  'what does mlkem768 look like at 1200 bytes?'\n"
++           # "      → [DB] query_by_algorithm or query_by_message_size\n\n"
+             "Reply in English. Be concise. Tables are welcome and should be\n"
+             "pasted from the tool output, not paraphrased."
+         )
