@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Security Scanner</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header .logo { font-size: 22px; }
+    header h1 { font-size: 18px; font-weight: 600; color: #58a6ff; }
+    header .subtitle { font-size: 13px; color: #8b949e; margin-left: auto; }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+
+    /* Scan input */
+    .scan-box {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      padding: 24px;
+      margin-bottom: 28px;
+    }
+    .scan-box label { display: block; font-size: 13px; color: #8b949e; margin-bottom: 8px; }
+    .scan-row { display: flex; gap: 10px; }
+    .scan-row input {
+      flex: 1;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 10px 14px;
+      color: #e6edf3;
+      font-size: 14px;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .scan-row input:focus { border-color: #58a6ff; }
+    .scan-row input::placeholder { color: #484f58; }
+    button {
+      background: #238636;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .2s;
+      white-space: nowrap;
+    }
+    button:hover { background: #2ea043; }
+    button:disabled { background: #21262d; color: #484f58; cursor: not-allowed; }
+    button.secondary {
+      background: #21262d;
+      border: 1px solid #30363d;
+      color: #c9d1d9;
+    }
+    button.secondary:hover { background: #30363d; }
+
+    /* Status banner */
+    .banner {
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      display: none;
+    }
+    .banner h2 { font-size: 18px; margin-bottom: 4px; }
+    .banner p { font-size: 13px; opacity: .85; }
+    .banner.SAFE    { background: #0f2a1a; border: 1px solid #238636; }
+    .banner.CRITICAL { background: #2d1117; border: 1px solid #da3633; }
+    .banner.WARNING  { background: #2d1f00; border: 1px solid #d29922; }
+    .banner.IN-PROGRESS { background: #1a2332; border: 1px solid #388bfd; }
+    .banner.UNKNOWN  { background: #1c2128; border: 1px solid #484f58; }
+
+    /* Metric cards */
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 16px 20px;
+    }
+    .card .val { font-size: 32px; font-weight: 700; }
+    .card .lbl { font-size: 12px; color: #8b949e; margin-top: 4px; }
+    .card.red   { border-color: #da3633; }  .card.red   .val { color: #f85149; }
+    .card.orange{ border-color: #d29922; }  .card.orange .val { color: #e3b341; }
+    .card.green { border-color: #238636; }  .card.green  .val { color: #3fb950; }
+    .card.blue  { border-color: #388bfd; }  .card.blue   .val { color: #58a6ff; }
+
+    /* Tabs */
+    .tabs { display: flex; border-bottom: 1px solid #30363d; margin-bottom: 20px; gap: 2px; }
+    .tab {
+      padding: 10px 18px;
+      font-size: 14px;
+      cursor: pointer;
+      color: #8b949e;
+      border-bottom: 2px solid transparent;
+      transition: color .15s;
+      user-select: none;
+    }
+    .tab:hover { color: #c9d1d9; }
+    .tab.active { color: #58a6ff; border-bottom-color: #58a6ff; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Algorithm list */
+    .algo-group { margin-bottom: 16px; }
+    .algo-group h3 { font-size: 13px; color: #8b949e; margin-bottom: 8px; text-transform: uppercase; letter-spacing: .05em; }
+    .algo-item {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      overflow: hidden;
+    }
+    .algo-header {
+      display: flex;
+      align-items: center;
+      padding: 12px 16px;
+      cursor: pointer;
+      gap: 10px;
+      user-select: none;
+    }
+    .algo-header:hover { background: #1c2128; }
+    .algo-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 20px;
+      letter-spacing: .04em;
+    }
+    .badge-red    { background: #3d1a1a; color: #f85149; border: 1px solid #da3633; }
+    .badge-orange { background: #2d1f00; color: #e3b341; border: 1px solid #d29922; }
+    .badge-green  { background: #0f2a1a; color: #3fb950; border: 1px solid #238636; }
+    .badge-blue   { background: #1a2332; color: #58a6ff; border: 1px solid #388bfd; }
+
+    .algo-name { font-size: 14px; font-weight: 600; }
+    .algo-locs { margin-left: auto; font-size: 12px; color: #8b949e; }
+    .algo-chevron { font-size: 12px; color: #484f58; transition: transform .2s; }
+    .algo-item.open .algo-chevron { transform: rotate(90deg); }
+
+    .algo-body { display: none; padding: 0 16px 14px; border-top: 1px solid #21262d; }
+    .algo-item.open .algo-body { display: block; }
+    .algo-rec  { font-size: 13px; color: #e3b341; margin: 10px 0 8px; }
+    .algo-risk { font-size: 13px; color: #f85149; margin-bottom: 8px; }
+    .loc-list  { list-style: none; }
+    .loc-list li {
+      font-size: 12px;
+      font-family: 'Consolas', monospace;
+      color: #8b949e;
+      padding: 2px 0;
+    }
+    .loc-list li::before { content: '▸ '; color: #484f58; }
+
+    /* SBOM */
+    .sbom-wrap {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .sbom-actions { display: flex; gap: 10px; margin-bottom: 16px; align-items: center; }
+    .sbom-actions span { font-size: 13px; color: #8b949e; margin-left: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 8px 12px; color: #8b949e; border-bottom: 1px solid #30363d; font-weight: 500; }
+    td { padding: 8px 12px; border-bottom: 1px solid #21262d; color: #c9d1d9; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #1c2128; }
+    .pill {
+      display: inline-block;
+      font-size: 11px;
+      padding: 1px 8px;
+      border-radius: 20px;
+      background: #21262d;
+      color: #8b949e;
+    }
+
+    /* AI Analysis */
+    .analysis-wrap { position: relative; }
+    .analysis-box {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 20px;
+      font-size: 14px;
+      line-height: 1.7;
+      color: #c9d1d9;
+      white-space: pre-wrap;
+      min-height: 120px;
+    }
+    .analysis-placeholder { color: #484f58; font-style: italic; }
+
+    /* Chat */
+    .chat-wrap {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .chat-messages {
+      height: 360px;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .msg { max-width: 80%; }
+    .msg.user { align-self: flex-end; }
+    .msg.bot  { align-self: flex-start; }
+    .msg-bubble {
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 14px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+    .msg.user .msg-bubble { background: #1f4d8f; color: #e6edf3; border-radius: 10px 10px 2px 10px; }
+    .msg.bot  .msg-bubble { background: #21262d; color: #c9d1d9; border-radius: 10px 10px 10px 2px; }
+    .msg-sender { font-size: 11px; color: #484f58; margin-bottom: 4px; }
+    .msg.user .msg-sender { text-align: right; }
+    .chat-input-row {
+      display: flex;
+      gap: 8px;
+      padding: 12px;
+      border-top: 1px solid #30363d;
+      background: #0d1117;
+    }
+    .chat-input-row input {
+      flex: 1;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 10px 14px;
+      color: #e6edf3;
+      font-size: 14px;
+      outline: none;
+    }
+    .chat-input-row input:focus { border-color: #58a6ff; }
+
+    /* Spinner */
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid #30363d;
+      border-top-color: #58a6ff;
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .hidden { display: none !important; }
+    .empty-state { text-align: center; color: #484f58; padding: 40px; font-size: 14px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="logo">🔐</span>
+  <h1>Security Scanner</h1>
+  <span class="subtitle" id="status-dot">Connecting to MCP server...</span>
+</header>
+
+<div class="container">
+
+  <!-- Scan input -->
+  <div class="scan-box">
+    <label>Project path — enter the full path to your project directory or ZIP file</label>
+    <div class="scan-row">
+      <input id="path-input" type="text" placeholder="/home/user/my-project  or  /home/user/project.zip" />
+      <button id="scan-btn" onclick="runScan()">Scan Project</button>
+    </div>
+  </div>
+
+  <!-- Status banner -->
+  <div class="banner hidden" id="banner">
+    <h2 id="banner-title"></h2>
+    <p id="banner-desc"></p>
+  </div>
+
+  <!-- Metric cards -->
+  <div class="metrics hidden" id="metrics">
+    <div class="card red">
+      <div class="val" id="m-vuln">0</div>
+      <div class="lbl">Quantum Vulnerable</div>
+    </div>
+    <div class="card orange">
+      <div class="val" id="m-weak">0</div>
+      <div class="lbl">Weak Classical</div>
+    </div>
+    <div class="card green">
+      <div class="val" id="m-safe">0</div>
+      <div class="lbl">Safe</div>
+    </div>
+    <div class="card blue">
+      <div class="val" id="m-pqc">0</div>
+      <div class="lbl">Post-Quantum</div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs hidden" id="tabs">
+    <div class="tab active" onclick="switchTab('cbom')">CBOM</div>
+    <div class="tab" onclick="switchTab('sbom')">SBOM</div>
+    <div class="tab" onclick="switchTab('analysis')">AI Analysis</div>
+    <div class="tab" onclick="switchTab('chat')">Chat</div>
+  </div>
+
+  <!-- CBOM tab -->
+  <div class="tab-panel active" id="tab-cbom">
+    <div id="cbom-content"><div class="empty-state">Run a scan to see results.</div></div>
+  </div>
+
+  <!-- SBOM tab -->
+  <div class="tab-panel" id="tab-sbom">
+    <div class="sbom-wrap">
+      <div class="sbom-actions">
+        <button class="secondary" onclick="loadSbom()">Load SBOM</button>
+        <button class="secondary" onclick="downloadSbom()">Download JSON</button>
+        <span id="sbom-count"></span>
+      </div>
+      <div id="sbom-content"><div class="empty-state">Click "Load SBOM" to generate the Software Bill of Materials.</div></div>
+    </div>
+  </div>
+
+  <!-- AI Analysis tab -->
+  <div class="tab-panel" id="tab-analysis">
+    <div class="analysis-wrap">
+      <div style="margin-bottom:12px;">
+        <button onclick="loadAnalysis()">Run AI Analysis</button>
+      </div>
+      <div class="analysis-box" id="analysis-content">
+        <span class="analysis-placeholder">Click "Run AI Analysis" to get Ollama-powered security recommendations.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat tab -->
+  <div class="tab-panel" id="tab-chat">
+    <div class="chat-wrap">
+      <div class="chat-messages" id="chat-messages">
+        <div class="empty-state">Ask anything about your project's security.</div>
+      </div>
+      <div class="chat-input-row">
+        <input id="chat-input" type="text" placeholder="e.g. How do I replace RSA with a post-quantum algorithm?"
+               onkeydown="if(event.key==='Enter') sendChat()" />
+        <button onclick="sendChat()">Send</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let scanData = null;
+  let sbomData = null;
+  let currentPath = '';
+
+  const BANNER_CONFIG = {
+    'SAFE':        { cls: 'SAFE',        icon: '✅', title: 'SAFE', desc: 'No quantum-vulnerable or weak algorithms found.' },
+    'CRITICAL':    { cls: 'CRITICAL',    icon: '🚨', title: 'CRITICAL', desc: 'Quantum-vulnerable algorithms found with no post-quantum migration started.' },
+    'WARNING':     { cls: 'WARNING',     icon: '⚠️', title: 'WARNING', desc: 'Classically weak algorithms found — no quantum risk, but should be updated.' },
+    'IN PROGRESS': { cls: 'IN-PROGRESS', icon: '🔄', title: 'IN PROGRESS', desc: 'Some post-quantum migration done, but vulnerable algorithms remain.' },
+    'UNKNOWN':     { cls: 'UNKNOWN',     icon: '❓', title: 'UNKNOWN', desc: 'Could not determine overall status.' },
+  };
+
+  // Check server status on load
+  fetch('/status').then(r => r.json()).then(d => {
+    document.getElementById('status-dot').textContent =
+      d.connected ? `Connected · model: ${d.model}` : 'MCP server not connected';
+  }).catch(() => {
+    document.getElementById('status-dot').textContent = 'Could not reach backend';
+  });
+
+  function setLoading(btn, loading, text) {
+    btn.disabled = loading;
+    btn.innerHTML = loading ? `<span class="spinner"></span>${text}` : text;
+  }
+
+  async function runScan() {
+    const path = document.getElementById('path-input').value.trim();
+    if (!path) return;
+    currentPath = path;
+
+    const btn = document.getElementById('scan-btn');
+    setLoading(btn, true, 'Scanning...');
+
+    try {
+      const res = await fetch('/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        alert('Scan failed: ' + (err.detail || res.statusText));
+        return;
+      }
+      scanData = await res.json();
+      renderResults(scanData);
+
+      // Reset other tabs
+      sbomData = null;
+      document.getElementById('sbom-content').innerHTML = '<div class="empty-state">Click "Load SBOM" to generate the Software Bill of Materials.</div>';
+      document.getElementById('sbom-count').textContent = '';
+      document.getElementById('analysis-content').innerHTML = '<span class="analysis-placeholder">Click "Run AI Analysis" to get Ollama-powered security recommendations.</span>';
+      clearChat();
+    } catch (e) {
+      alert('Error: ' + e.message);
+    } finally {
+      setLoading(btn, false, 'Scan Project');
+    }
+  }
+
+  function renderResults(data) {
+    const summary = data.summary || {};
+
+    // Banner
+    const status = summary.overall_status || 'UNKNOWN';
+    const cfg = BANNER_CONFIG[status] || BANNER_CONFIG['UNKNOWN'];
+    const banner = document.getElementById('banner');
+    banner.className = 'banner ' + cfg.cls;
+    document.getElementById('banner-title').textContent = `${cfg.icon} ${cfg.title}`;
+    document.getElementById('banner-desc').textContent = cfg.desc;
+    banner.classList.remove('hidden');
+
+    // Metrics
+    document.getElementById('m-vuln').textContent = summary.quantum_vulnerable ?? 0;
+    document.getElementById('m-weak').textContent = summary.weak_classical ?? 0;
+    document.getElementById('m-safe').textContent = summary.safe ?? 0;
+    document.getElementById('m-pqc').textContent  = summary.pqc ?? 0;
+    document.getElementById('metrics').classList.remove('hidden');
+
+    // Tabs
+    document.getElementById('tabs').classList.remove('hidden');
+
+    // CBOM content
+    const cbom = document.getElementById('cbom-content');
+    cbom.innerHTML = '';
+
+    const sections = [
+      { key: 'quantum_vulnerable', label: '🔴 Quantum Vulnerable', badge: 'badge-red' },
+      { key: 'weak_classical',     label: '🟡 Weak Classical',     badge: 'badge-orange' },
+      { key: 'safe',               label: '🟢 Safe',               badge: 'badge-green' },
+      { key: 'pqc',                label: '🔵 Post-Quantum',        badge: 'badge-blue' },
+    ];
+
+    for (const sec of sections) {
+      const items = data[sec.key] || [];
+      const group = document.createElement('div');
+      group.className = 'algo-group';
+      group.innerHTML = `<h3>${sec.label} (${items.length})</h3>`;
+
+      if (items.length === 0) {
+        group.innerHTML += `<div style="color:#484f58;font-size:13px;padding:8px 0;">None found.</div>`;
+      } else {
+        for (const algo of items) {
+          group.appendChild(makeAlgoItem(algo, sec.badge));
+        }
+      }
+      cbom.appendChild(group);
+    }
+  }
+
+  function makeAlgoItem(algo, badgeClass) {
+    const el = document.createElement('div');
+    el.className = 'algo-item';
+    const locs = algo.locations || [];
+    el.innerHTML = `
+      <div class="algo-header" onclick="toggleAlgo(this)">
+        <span class="algo-badge ${badgeClass}">${algo.primitive || 'crypto'}</span>
+        <span class="algo-name">${algo.name}</span>
+        ${algo.key_size ? `<span style="font-size:12px;color:#8b949e;">${algo.key_size}-bit</span>` : ''}
+        <span class="algo-locs">${locs.length} location${locs.length !== 1 ? 's' : ''}</span>
+        <span class="algo-chevron">▶</span>
+      </div>
+      <div class="algo-body">
+        ${algo.risk ? `<div class="algo-risk">⚠ ${algo.risk}</div>` : ''}
+        ${algo.recommendation ? `<div class="algo-rec">→ ${algo.recommendation}</div>` : ''}
+        ${locs.length ? `<ul class="loc-list">${locs.map(l => `<li>${l}</li>`).join('')}</ul>` : '<span style="color:#484f58;font-size:12px;">No location data.</span>'}
+      </div>`;
+    return el;
+  }
+
+  function toggleAlgo(header) {
+    header.parentElement.classList.toggle('open');
+  }
+
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach((t, i) => {
+      const names = ['cbom', 'sbom', 'analysis', 'chat'];
+      t.classList.toggle('active', names[i] === name);
+    });
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+  }
+
+  async function loadSbom() {
+    if (!currentPath) { alert('Run a scan first.'); return; }
+    const btn = event.target;
+    setLoading(btn, true, 'Generating...');
+    try {
+      const res = await fetch('/sbom', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: currentPath }),
+      });
+      if (!res.ok) { const e = await res.json(); alert(e.detail); return; }
+      sbomData = await res.json();
+      renderSbom(sbomData);
+    } catch (e) {
+      alert('Error: ' + e.message);
+    } finally {
+      setLoading(btn, false, 'Load SBOM');
+    }
+  }
+
+  function renderSbom(sbom) {
+    const comps = sbom.components || [];
+    document.getElementById('sbom-count').textContent = `${comps.length} component${comps.length !== 1 ? 's' : ''}`;
+    const el = document.getElementById('sbom-content');
+    if (comps.length === 0) {
+      el.innerHTML = '<div class="empty-state">No dependencies found.</div>';
+      return;
+    }
+    el.innerHTML = `<table>
+      <thead><tr><th>Name</th><th>Version</th><th>Ecosystem</th><th>PURL</th></tr></thead>
+      <tbody>${comps.map(c => `
+        <tr>
+          <td><strong>${c.name}</strong></td>
+          <td>${c.version}</td>
+          <td><span class="pill">${c.purl?.split(':')[1]?.split('/')[0] || '—'}</span></td>
+          <td style="font-size:11px;font-family:monospace;color:#8b949e;">${c.purl || '—'}</td>
+        </tr>`).join('')}
+      </tbody></table>`;
+  }
+
+  function downloadSbom() {
+    if (!sbomData) { alert('Load the SBOM first.'); return; }
+    const blob = new Blob([JSON.stringify(sbomData, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'sbom.json';
+    a.click();
+  }
+
+  async function loadAnalysis() {
+    if (!currentPath) { alert('Run a scan first.'); return; }
+    const btn = event.target;
+    const box = document.getElementById('analysis-content');
+    setLoading(btn, true, 'Analyzing...');
+    box.innerHTML = '<span class="spinner"></span> Asking Ollama for security recommendations...';
+    try {
+      const res = await fetch('/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: currentPath }),
+      });
+      if (!res.ok) { const e = await res.json(); box.textContent = 'Error: ' + e.detail; return; }
+      const data = await res.json();
+      box.textContent = data.analysis || 'No response.';
+    } catch (e) {
+      box.textContent = 'Error: ' + e.message;
+    } finally {
+      setLoading(btn, false, 'Run AI Analysis');
+    }
+  }
+
+  function clearChat() {
+    document.getElementById('chat-messages').innerHTML = '<div class="empty-state">Ask anything about your project\'s security.</div>';
+  }
+
+  async function sendChat() {
+    const input = document.getElementById('chat-input');
+    const question = input.value.trim();
+    if (!question) return;
+    input.value = '';
+
+    const messages = document.getElementById('chat-messages');
+
+    // Remove empty state
+    const empty = messages.querySelector('.empty-state');
+    if (empty) empty.remove();
+
+    // Add user message
+    messages.innerHTML += `
+      <div class="msg user">
+        <div class="msg-sender">You</div>
+        <div class="msg-bubble">${escHtml(question)}</div>
+      </div>`;
+
+    // Add typing indicator
+    const typingId = 'typing-' + Date.now();
+    messages.innerHTML += `
+      <div class="msg bot" id="${typingId}">
+        <div class="msg-sender">Security Assistant</div>
+        <div class="msg-bubble"><span class="spinner"></span> Thinking...</div>
+      </div>`;
+    messages.scrollTop = messages.scrollHeight;
+
+    try {
+      const res = await fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question, context: scanData || {} }),
+      });
+      const data = await res.json();
+      const reply = res.ok ? (data.response || 'No response.') : ('Error: ' + data.detail);
+
+      document.getElementById(typingId).outerHTML = `
+        <div class="msg bot">
+          <div class="msg-sender">Security Assistant</div>
+          <div class="msg-bubble">${escHtml(reply)}</div>
+        </div>`;
+    } catch (e) {
+      document.getElementById(typingId).outerHTML = `
+        <div class="msg bot">
+          <div class="msg-sender">Security Assistant</div>
+          <div class="msg-bubble" style="color:#f85149;">Error: ${escHtml(e.message)}</div>
+        </div>`;
+    }
+    messages.scrollTop = messages.scrollHeight;
+  }
+
+  function escHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+</script>
+</body>
+</html>
