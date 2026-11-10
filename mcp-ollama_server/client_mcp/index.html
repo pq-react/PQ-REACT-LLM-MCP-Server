@@ -111,6 +111,50 @@
         <button class="suggestion" type="button">Which algorithm has the lowest handshake duration in the CAM dataset?</button>
       </details>
 
+      <!-- ─── Algorithm comparison panel ──────────────────────────────── -->
+      <details id="compare-panel" class="suggestion-category compare-panel">
+        <summary>Compare algorithms</summary>
+        <div class="compare-body">
+          <label class="compare-label" for="algo1">Algorithm 1</label>
+          <select id="algo1" class="compare-select">
+            <option value="" selected>Select an algorithm...</option>
+            <option value="mlkem512">ML-KEM-512</option>
+            <option value="mlkem768">ML-KEM-768</option>
+            <option value="mlkem1024">ML-KEM-1024</option>
+            <option value="mldsa44">ML-DSA-44</option>
+            <option value="mldsa65">ML-DSA-65</option>
+            <option value="mldsa87">ML-DSA-87</option>
+            <option value="slhdsasha2128f">SLH-DSA-SHA2-128f</option>
+            <option value="slhdsasha2192f">SLH-DSA-SHA2-192f</option>
+            <option value="slhdsasha2256f">SLH-DSA-SHA2-256f</option>
+            <option value="falconpadded512">Falcon-512</option>
+            <option value="falconpadded1024">Falcon-1024</option>
+            <option value="hqc128">HQC-128</option>
+            <option value="hqc192">HQC-192</option>
+            <option value="hqc256">HQC-256</option>
+          </select>
+          <label class="compare-label" for="algo2">Algorithm 2</label>
+          <select id="algo2" class="compare-select">
+            <option value="" selected>Select an algorithm...</option>
+            <option value="mlkem512">ML-KEM-512</option>
+            <option value="mlkem768">ML-KEM-768</option>
+            <option value="mlkem1024">ML-KEM-1024</option>
+            <option value="mldsa44">ML-DSA-44</option>
+            <option value="mldsa65">ML-DSA-65</option>
+            <option value="mldsa87">ML-DSA-87</option>
+            <option value="slhdsasha2128f">SLH-DSA-SHA2-128f</option>
+            <option value="slhdsasha2192f">SLH-DSA-SHA2-192f</option>
+            <option value="slhdsasha2256f">SLH-DSA-SHA2-256f</option>
+            <option value="falconpadded512">Falcon-512</option>
+            <option value="falconpadded1024">Falcon-1024</option>
+            <option value="hqc128">HQC-128</option>
+            <option value="hqc192">HQC-192</option>
+            <option value="hqc256">HQC-256</option>
+          </select>
+          <button id="run-compare" class="compare-btn" type="button">Run comparison</button>
+        </div>
+      </details>
+
       <div class="sidebar-footer">
         35 MCP tools across 6 categories
         (<code>[DB]</code>·<code>[QUJATA]</code>·<code>[KATANA]</code>·<code>[REGULATIONS]</code>·<code>[INVENTORY]</code>·<code>[DEVICES]</code>).

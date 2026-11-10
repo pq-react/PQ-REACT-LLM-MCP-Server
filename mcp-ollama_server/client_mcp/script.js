@@ -422,6 +422,30 @@ const API = '';
   const clearBtn = document.getElementById('clear-chat');
   if (clearBtn) clearBtn.addEventListener('click', clearChat);
 
+  // ── Algorithm comparison panel ──────────────────────────────────────
+  const runCompareBtn = document.getElementById('run-compare');
+  if (runCompareBtn) {
+    runCompareBtn.addEventListener('click', () => {
+      const a1 = document.getElementById('algo1').value;
+      const a2 = document.getElementById('algo2').value;
+      const input = document.getElementById('query-input');
+      if (input.disabled) {
+        addMessage('Not connected yet — wait for the connection to come up first.', 'system-msg');
+        return;
+      }
+      if (!a1 || !a2) {
+        addMessage('Please select two algorithms to compare.', 'system-msg');
+        return;
+      }
+      if (a1 === a2) {
+        addMessage('Please select two different algorithms to compare.', 'system-msg');
+        return;
+      }
+      const query = `Compare ${a1} to ${a2} across all performance metrics and security levels according to the cam-context-agility.`;
+      fillSuggestion(query);
+    });
+  }
+
   // ── Theme toggle (light / dark / auto-from-system) ─────────────────
   // The bootstrap script in <head> already set data-theme based on
   // saved preference + prefers-color-scheme. This handler cycles
