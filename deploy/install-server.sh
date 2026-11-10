@@ -9,10 +9,11 @@
 # Env (all optional):
 #   SSHPASS=...    enables sshpass; otherwise key auth required
 #
-# After bring-up, load the schema seed:
-#   docker exec -i pqreact-mcp-mariadb \
-#       sh -c 'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" PQREACT' \
-#       < mcp-ollama_server/database/pqreact_export.sql
+# A fresh MariaDB volume is initialised from the seed dump plus
+# etl/schema/*.sql (see docker-compose.yml). To re-seed by hand, load
+# mcp-ollama_server/database/pqreact_export.sql and then re-apply
+# etl/schema/performance_test.sql (the dump recreates performance_test
+# without the source/size_kind columns).
 
 set -euo pipefail
 
@@ -39,6 +40,9 @@ for f in docker-compose.yml Dockerfile.server serve_sse.py requirements-server.t
     $SCP "${REPO_ROOT}/${f}" "${USER_}@${TARGET}:${REMOTE_DIR}/${f}"
 done
 $SCP -r "${REPO_ROOT}/mcp-ollama_server" "${USER_}@${TARGET}:${REMOTE_DIR}/"
+# etl/ holds the schema files docker-compose mounts into MariaDB initdb,
+# plus the optional measurement / reference-data importers.
+$SCP -r "${REPO_ROOT}/etl" "${USER_}@${TARGET}:${REMOTE_DIR}/"
 
 # Generate .env if absent (random passwords); start stack
 $SSH "${USER_}@${TARGET}" bash -se <<EOF

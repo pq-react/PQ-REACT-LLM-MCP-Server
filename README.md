@@ -66,10 +66,16 @@ Single Docker compose, single host:
 cp .env.example .env
 # edit .env: at minimum set MCP_DB_ROOT_PW + MCP_DB_PW
 docker compose up -d
-# load the seed schema once (idempotent)
-docker exec -i pqreact-mcp-mariadb \
-    sh -c 'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" PQREACT' \
-    < mcp-ollama_server/database/pqreact_export.sql
+# A fresh volume is initialised automatically: the seed dump
+# (mcp-ollama_server/database/pqreact_export.sql) followed by
+# etl/schema/*.sql (schema only). To re-seed an existing volume by hand,
+# load the dump and then re-apply etl/schema/performance_test.sql — the
+# dump drops and recreates performance_test without the `source` /
+# `size_kind` columns the server needs:
+#   for f in mcp-ollama_server/database/pqreact_export.sql etl/schema/performance_test.sql; do
+#     docker exec -i pqreact-mcp-mariadb \
+#       sh -c 'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" PQREACT' < "$f"
+#   done
 # probe
 curl -fsS http://localhost:5040/sse | head -c 200 ; echo
 ```

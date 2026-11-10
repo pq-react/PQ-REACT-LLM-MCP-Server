@@ -8,10 +8,13 @@
 #   cp .env.example .env
 #   # edit .env: set MCP_DB_ROOT_PW + MCP_DB_PW
 #   docker compose up -d
-#   # then load the schema + seed data:
+#   # a fresh volume is initialised automatically from the seed dump and
+#   # etl/schema/*.sql (see the mcp-mariadb volumes below). To (re)load the
+#   # seed into an existing volume by hand:
 #   docker exec -i pqreact-mcp-mariadb \
 #       sh -c 'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" PQREACT' \
 #       < mcp-ollama_server/database/pqreact_export.sql
+#   # then apply etl/schema/*.sql the same way (all idempotent).
 #
 # Cross-stack reach (optional): set QUJATA_DB_HOST / QUJATA_API_BASE /
 # KATANA_NBI_BASE / KATANA_KPI_BASE in .env to enable the corresponding
@@ -29,6 +32,15 @@ services:
     volumes:
       - mcp-mariadb-data:/var/lib/mysql
       - ./mcp-ollama_server/database/pqreact_export.sql:/docker-entrypoint-initdb.d/00-schema.sql:ro
+      # Remaining PQREACT tables (schema only, no data), applied once on a
+      # fresh volume in this order. 01 adds performance_test.source /
+      # size_kind, which the server's PQC metric tools require.
+      - ./etl/schema/performance_test.sql:/docker-entrypoint-initdb.d/01-performance_test.sql:ro
+      - ./etl/schema/regulations.sql:/docker-entrypoint-initdb.d/02-regulations.sql:ro
+      - ./etl/schema/inventory.sql:/docker-entrypoint-initdb.d/03-inventory.sql:ro
+      - ./etl/schema/device_specs.sql:/docker-entrypoint-initdb.d/04-device_specs.sql:ro
+      - ./etl/schema/pqc_configurations.sql:/docker-entrypoint-initdb.d/05-pqc_configurations.sql:ro
+      - ./etl/schema/uc3_runs.sql:/docker-entrypoint-initdb.d/06-uc3_runs.sql:ro
     ports:
       - "${MCP_DB_PORT:-3307}:3306"
     healthcheck:
