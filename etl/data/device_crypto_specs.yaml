@@ -1,0 +1,310 @@
+# Device crypto specifications — Phase 2 of the recommendation engine.
+#
+# Status: DRAFT v1 — initial curation 2026-05-06.
+# Same data-first pattern as etl/data/regulations.yaml: hand-curated rows
+# per device-class × protocol, captured from the cited standards. The
+# schema in etl/schema/device_specs.sql falls out of the keys here.
+#
+# Curation principles
+#   - One row per (device_type, protocol) tuple. A device that speaks
+#     multiple protocols (e.g. an RTU doing both 60870-5-104 and 61850
+#     MMS) gets one row per protocol.
+#   - "current_*" fields capture what's deployed in the field today
+#     (per the plan §2 sector reviews); "pqc_candidate_*" captures the
+#     migration target.
+#   - pqc_compatible: does the deployed device firmware ALREADY accept
+#     PQC primitives? Mostly false — that's the point of the migration.
+#   - Article references in `spec_reference` point at the specific
+#     clause that pins the cipher suite, so the chat agent can cite it.
+#
+# DRAFT v1 caveats
+#   - Some "current cipher suite" rows are typical-deployment guesses,
+#     not site-specific surveys. Cross-check before publishing.
+#   - Health-sector rows are vendor-agnostic; specific FHIR servers /
+#     EHR vendors may pin tighter cipher choices.
+#   - 3GPP / IEC / IETF clause numbers should be cross-checked against
+#     the actual standard text before any compliance-driven decision.
+
+devices:
+
+  # ─── Energy / Smart Grid ──────────────────────────────────────────────
+  - device_type: smart-meter-dlms-cosem
+    protocol: DLMS/COSEM (TLS 1.2)
+    sector: energy
+    current_cipher_suite: TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+    current_key_exchange: ECDHE secp256r1
+    current_signature: ECDSA P-256
+    key_length: AES-128 / 256-bit ECDSA / 256-bit ECDH
+    pqc_compatible: false
+    pqc_candidate_algorithms: [ML-KEM-768, ML-DSA-65]
+    spec_reference: "DLMS Blue Book Annex K (TLS 1.2 cipher suite list)"
+    source: dlms-blue-book
+    notes: >
+      Field-deployed meters often have 5-10 year firmware lifecycles
+      and constrained ROM. Hybrid PQC may need a firmware bump.
+
+  - device_type: rtu-ied
+    protocol: IEC 61850 MMS (TLS 1.2/1.3)
+    sector: energy
+    current_cipher_suite: TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+    current_key_exchange: ECDHE secp256r1
+    current_signature: RSA-2048 or ECDSA P-256 (X.509 device cert)
+    key_length: AES-256 / RSA-2048 / 256-bit ECDH
+    pqc_compatible: false
+    pqc_candidate_algorithms: [ML-KEM-768, ML-DSA-65]
+    spec_reference: "IEC 62351-3 (TLS profiles for IEC 61850 MMS)"
+    source: iec-62351-3
+    notes: >
+      62351-3 mandates TLS 1.2+ with mutual X.509. PQC migration goes
+      via hybrid TLS 1.3 (X25519+ML-KEM-768) + ML-DSA cert chain.
+
+  - device_type: rtu-ied
+    protocol: IEC 60870-5-104 (TCP, secure profile)
+    sector: energy
+    current_cipher_suite: HMAC-SHA-256 over IEC 60870-5-7 framing
+    current_key_exchange: pre-shared key derived via challenge (62351-5)
+    current_signature: n/a (symmetric MAC only)
+    key_length: 256-bit pre-shared
+    pqc_compatible: true
+    pqc_candidate_algorithms: [HMAC-SHA-256, AES-256-CMAC]
+    spec_reference: "IEC 62351-5 (auth for IEC 60870-5-101/104)"
+    source: iec-62351-5
+    notes: >
+      Symmetric primitives are quantum-resistant at adequate length.
+      The asymmetric weakness is in the 62351-9 key-establishment
+      layer that pre-distributes the PSK — that needs ML-KEM.
+
+  - device_type: scada-master
+    protocol: IEC 61850 MMS server (TLS 1.3 mTLS)
+    sector: energy
+    current_cipher_suite: TLS_AES_256_GCM_SHA384 (ECDHE secp384r1)
+    current_key_exchange: ECDHE secp384r1
+    current_signature: RSA-3072 or ECDSA P-384
+    key_length: AES-256 / RSA-3072 / 384-bit ECDH
+    pqc_compatible: false
+    pqc_candidate_algorithms: [ML-KEM-1024, ML-DSA-87, X25519+ML-KEM-768]
+    spec_reference: "IEC 62351-3 §5 + 62351-8 RBAC profile"
+    source: iec-62351
+    notes: >
+      Master stations are the highest-impact migration target —
+      compromise yields control over the whole substation fleet.
+      Recommend NIST L5 (ML-KEM-1024 / ML-DSA-87).
+
+  - device_type: der-inverter
+    protocol: IEEE 2030.5 (TLS over HTTPS)
+    sector: energy
+    current_cipher_suite: TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+    current_key_exchange: ECDHE secp256r1
+    current_signature: ECDSA P-256
+    key_length: AES-128 / 256-bit ECDSA / 256-bit ECDH
+    pqc_compatible: false
+    pqc_candidate_algorithms: [ML-KEM-768, ML-DSA-65]
+    spec_reference: "IEEE 2030.5-2018 §6 (TLS profile)"
+    source: ieee-2030.5
+    notes: >
+      Distributed Energy Resources (solar, storage, EV) are growing
+      attack surface. AES-128 is borderline post-Grover — bump to
+      AES-256 in the same migration.
+
+  # ─── Telco / 5G ───────────────────────────────────────────────────────
+  - device_type: 5g-nf-sba-tls
+    protocol: HTTP/2 over TLS 1.3 (SBA inter-NF)
+    sector: telco
+    current_cipher_suite: TLS_AES_256_GCM_SHA384
+    current_key_exchange: ECDHE secp256r1 or x25519
+    current_signature: ECDSA P-256 (NF certificate)
+    key_length: AES-256 / 256-bit ECDSA
+    pqc_compatible: false
+    pqc_candidate_algorithms: [ML-KEM-768, ML-DSA-65, X25519+ML-KEM-768]
+    spec_reference: "3GPP TS 33.501 §13 (SBA security)"
+    source: 3gpp-ts-33-501
+    notes: >
+      Hottest 5G migration target. free5GC sidecar measurements show
+      ~48-49 ms PQC handshake overhead (imported as performance_test
+      source='5gc-pqc-benchmark' in Phase 2 ETL). Hybrid first.
+
+  - device_type: 5g-n2-n3-ipsec
+    protocol: IPsec ESP / IKEv2
+    sector: telco
+    current_cipher_suite: ESP AES-256-GCM, IKE_SA AES-256-CBC + SHA-384
+    current_key_exchange: DH group 19 (256-bit ECP)
+    current_signature: ECDSA P-256 (cert-auth) or PSK
+    key_length: AES-256 / 256-bit ECDH / SHA-384
+    pqc_compatible: true   # via StrongSwan plugin-oqs (already in QUJATA)
+    pqc_candidate_algorithms: [ML-KEM-768, ML-DSA-65]
+    spec_reference: "3GPP TS 33.501 §9 + RFC 8784/9242 (PQ IKEv2)"
+    source: 3gpp-ts-33-501
+    notes: >
+      IETF has standardized PQC IKEv2 (RFC 9242 hybrid + RFC 8784
+      multiple key exchanges). StrongSwan plugin-oqs already deployed
+      in the testbed at <core-vm-host>:30666 and <ran-vm-host>.
+
+  - device_type: 5g-aka-suci
+    protocol: SUCI concealment (ECIES) over USIM-AKA
+    sector: telco
+    current_cipher_suite: ECIES with secp256r1 (Profile A) or curve25519 (B)
+    current_key_exchange: ECDH (one-shot, ephemeral)
+    current_signature: n/a (ECIES is KEM-only)
+    key_length: 256-bit ECDH
+    pqc_compatible: false
+    pqc_candidate_algorithms: [ML-KEM-512, ML-KEM-768]
+    spec_reference: "3GPP TS 33.501 Annex C (SUCI profiles)"
+    source: 3gpp-ts-33-501
+    notes: >
+      SUCI hides the SUPI (subscriber permanent ID) from the air
+      interface. Today's ECIES is broken under Shor; PQC SUCI is a
+      33.501 R20 study item.
+
+  - device_type: sim-esim-pki
+    protocol: GSMA SGP.21/.22/.32 (eSIM provisioning)
+    sector: telco
+    current_cipher_suite: TLS 1.2 with ECDHE + ECDSA, ECIES SCP03
+    current_key_exchange: ECDHE secp256r1
+    current_signature: ECDSA P-256 (GSMA root CA chain)
+    key_length: AES-128 / 256-bit ECDSA
+    pqc_compatible: false
+    pqc_candidate_algorithms: [ML-KEM-768, ML-DSA-65, SLH-DSA-SHA2-128f]
+    spec_reference: "GSMA SGP.22 v2.4 §3.5 (eUICC remote provisioning)"
+    source: gsma-sgp-22
+    notes: >
+      eSIM PKI roots have ~25-year validity. Hash-based SLH-DSA is
+      conservative for these long-lived signatures.
+
+  - device_type: ims-vonr
+    protocol: SIP over TLS / SRTP
+    sector: telco
+    current_cipher_suite: TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+    current_key_exchange: ECDHE secp256r1
+    current_signature: RSA-2048
+    key_length: AES-256 / RSA-2048
+    pqc_compatible: false
+    pqc_candidate_algorithms: [ML-KEM-768, ML-DSA-65]
+    spec_reference: "3GPP TS 33.328 (IMS media plane security)"
+    source: 3gpp-ts-33-328
+    notes: >
+      VoNR / VoLTE inherit IMS crypto. SRTP keys established via
+      MIKEY-SAKKE for mission-critical use cases.
+
+  # ─── Health ───────────────────────────────────────────────────────────
+  - device_type: fhir-rest-api
+    protocol: HL7 FHIR REST over TLS 1.2/1.3 (OAuth 2.0)
+    sector: health
+    current_cipher_suite: TLS_AES_128_GCM_SHA256 or TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+    current_key_exchange: ECDHE secp256r1
+    current_signature: RSA-2048 or ECDSA P-256 (server cert) + RS256 JWTs
+    key_length: AES-128 / RSA-2048
+    pqc_compatible: false
+    pqc_candidate_algorithms: [ML-KEM-768, ML-DSA-65]
+    spec_reference: "HL7 FHIR R5 §Security; SMART on FHIR profiles"
+    source: hl7-fhir
+    notes: >
+      Small JSON payloads at high frequency — handshake overhead
+      dominates. ML-KEM-768 hybrid recommended; bump AES to 256
+      for HNDL protection on long-lived patient records.
+
+  - device_type: hl7-v2-mllp
+    protocol: HL7 v2 MLLP wrapped in TLS 1.2
+    sector: health
+    current_cipher_suite: TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+    current_key_exchange: ECDHE secp256r1
+    current_signature: RSA-2048
+    key_length: AES-256 / RSA-2048
+    pqc_compatible: false
+    pqc_candidate_algorithms: [ML-KEM-768, ML-DSA-65]
+    spec_reference: "HL7 v2.x ADT/ORU + MLLP §RFC 6242 envelope"
+    source: hl7-v2
+    notes: >
+      Legacy hospital integration — many vendors still on RSA-2048
+      certs from internal CAs. Migration coupled with CA rollover.
+
+  - device_type: dicom-tls
+    protocol: DICOM Upper Layer over TLS 1.2
+    sector: health
+    current_cipher_suite: TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+    current_key_exchange: ECDHE secp256r1
+    current_signature: RSA-2048
+    key_length: AES-256 / RSA-2048
+    pqc_compatible: false
+    pqc_candidate_algorithms: [ML-KEM-768, ML-DSA-65]
+    spec_reference: "DICOM PS3.15 §B.1 (Secure Transport Connection)"
+    source: dicom-ps3.15
+    notes: >
+      Medical imaging — large payloads (CT/MRI) tens of MB. PQC
+      handshake overhead amortizes over the transfer; AES-256 already
+      mandatory under PS3.15 BCP-195 profile.
+
+  - device_type: iomt-device
+    protocol: TLS 1.2 client-cert (BLE→gateway→cloud)
+    sector: health
+    current_cipher_suite: TLS_ECDHE_ECDSA_WITH_AES_128_CCM_8
+    current_key_exchange: ECDHE secp256r1
+    current_signature: ECDSA P-256 (device-cert + manufacturer CA)
+    key_length: AES-128 / 256-bit ECDSA
+    pqc_compatible: false
+    pqc_candidate_algorithms: [ML-KEM-512, ML-DSA-44]
+    spec_reference: "IEEE 11073 + IEC 80001-1 (medical device security)"
+    source: ieee-11073
+    notes: >
+      Connected medical devices (infusion pumps, glucose monitors,
+      implantables). Resource-constrained — start with NIST L1 PQC.
+
+  - device_type: ehr-db-encryption
+    protocol: at-rest (DEK wrapping; AES-XTS or AES-GCM)
+    sector: health
+    current_cipher_suite: AES-256-GCM (data) + RSA-OAEP-2048 (KEK wrap)
+    current_key_exchange: KMS-issued KEK (RSA wrap)
+    current_signature: n/a
+    key_length: AES-256 / RSA-2048 KEK
+    pqc_compatible: true   # AES-256 quantum-resistant; KEK wrap needs PQC
+    pqc_candidate_algorithms: [ML-KEM-768, AES-256-GCM-SIV]
+    spec_reference: "NIST SP 800-57 §5.6.2 (key wrap)"
+    source: nist-sp-800-57
+    notes: >
+      EHR retention is decades-long → harvest-now-decrypt-later is
+      acute. Migrate KEK-wrap to ML-KEM immediately; AES-256 stays.
+
+  # ─── Financial ────────────────────────────────────────────────────────
+  - device_type: core-banking-tls
+    protocol: TLS 1.3 mTLS at HSM-backed terminator
+    sector: financial
+    current_cipher_suite: TLS_AES_256_GCM_SHA384 (ECDHE secp384r1)
+    current_key_exchange: ECDHE secp384r1
+    current_signature: ECDSA P-384 or RSA-4096
+    key_length: AES-256 / RSA-4096
+    pqc_compatible: false
+    pqc_candidate_algorithms: [ML-KEM-1024, ML-DSA-87, X25519+ML-KEM-768]
+    spec_reference: "PCI-DSS v4 §4.2 + DORA RTS Art. 6"
+    source: pci-dora
+    notes: >
+      DORA mandates annual residual-risk re-assessment. CAM agility
+      loop fits naturally as the periodic measurement input.
+
+  - device_type: transaction-signer
+    protocol: PKCS#11 HSM signing (eIDAS qualified)
+    sector: financial
+    current_cipher_suite: RSASSA-PSS-SHA-256 or ECDSA P-256
+    current_key_exchange: n/a (signing only)
+    current_signature: RSA-3072 PSS or ECDSA P-256
+    key_length: RSA-3072 / 256-bit ECDSA
+    pqc_compatible: false
+    pqc_candidate_algorithms: [ML-DSA-65, SLH-DSA-SHA2-192s]
+    spec_reference: "eIDAS 2.0 Art. 24 (Qualified trust services)"
+    source: eidas2
+    notes: >
+      Long-validity signatures (10+ year audit trail). SLH-DSA
+      preferred for legal-evidence durability over ML-DSA.
+
+  - device_type: swift-messaging
+    protocol: SWIFTNet over PKI (SCM RMA)
+    sector: financial
+    current_cipher_suite: TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+    current_key_exchange: ECDHE secp256r1
+    current_signature: RSA-2048 (SWIFT root CA)
+    key_length: AES-256 / RSA-2048
+    pqc_compatible: false
+    pqc_candidate_algorithms: [ML-KEM-768, ML-DSA-65]
+    spec_reference: "SWIFT Customer Security Programme v2024"
+    source: swift-csp
+    notes: >
+      SWIFT publishes its own crypto profile updates; PQC
+      transition coordinated via the SWIFT CSCF working group.
